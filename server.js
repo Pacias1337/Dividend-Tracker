@@ -13,7 +13,7 @@ const tickers = {
   TAR: 'TAR.WA', SNT: 'SNT.WA', ING: 'ING.WA', AMC: 'AMC.WA',
   APT: 'APT.WA', UNI: 'UNI.WA', BHW: 'BHW.WA', WTN: 'WTN.WA',
   DCR: 'DCR.WA', BBT: 'BBT.WA', ZMT: 'ZMT.WA', VOT: 'VOT.WA',
-  TOR: 'TOR.WA', CBF: 'CBF.WA',
+  TOR: 'TOR.WA', CBF: 'CBF.WA', PAS: 'PAS.WA',
 };
 let cache;
 
