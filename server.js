@@ -6,7 +6,14 @@ const tickers = {
   PZU: 'PZU.WA', PEO: 'PEO.WA', ALR: 'ALR.WA', ACP: 'ACP.WA',
   BUD: 'BDX.WA', DOM: 'DOM.WA', GPW: 'GPW.WA', KTY: 'KTY.WA',
   XTB: 'XTB.WA', PKN: 'PKN.WA', NEU: 'NEU.WA', SKA: 'SKA.WA',
-  ABS: 'ABS.WA', ASE: 'ASE.WA', AMB: 'AMB.WA',
+  ABS: 'ABS.WA', ASE: 'ASE.WA', AMB: 'AMB.WA', ASB: 'ASB.WA',
+  EBP: 'EBP.WA', OPL: 'OPL.WA', KRU: 'KRU.WA', LPP: 'LPP.WA',
+  GPP: 'GPP.WA', ELT: 'ELT.WA', DVL: 'DVL.WA', PKO: 'PKO.WA',
+  CDR: 'CDR.WA', DIG: 'DIG.WA', PCR: 'PCR.WA', RBW: 'RBW.WA',
+  TAR: 'TAR.WA', SNT: 'SNT.WA', ING: 'ING.WA', AMC: 'AMC.WA',
+  APT: 'APT.WA', UNI: 'UNI.WA', BHW: 'BHW.WA', WTN: 'WTN.WA',
+  DCR: 'DCR.WA', BBT: 'BBT.WA', ZMT: 'ZMT.WA', VOT: 'VOT.WA',
+  TOR: 'TOR.WA', CBF: 'CBF.WA',
 };
 let cache;
 
