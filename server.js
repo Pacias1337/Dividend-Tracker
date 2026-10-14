@@ -50,6 +50,14 @@ const server = http.createServer(async (req, res) => {
       return json(res, 502, { error: 'Notowania są chwilowo niedostępne.' });
     }
   }
+  if (pathname === '/company-logos.js') {
+    try {
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=86400' });
+      return res.end(await readFile(path.join(__dirname, 'company-logos.js')));
+    } catch {
+      return json(res, 500, { error: 'Nie można otworzyć logotypów spółek.' });
+    }
+  }
   if (pathname === '/' || pathname === '/index.html') {
     try {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
