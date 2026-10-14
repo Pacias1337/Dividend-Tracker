@@ -16,6 +16,10 @@ const tickers = {
   TOR: 'TOR.WA', CBF: 'CBF.WA', PAS: 'PAS.WA', TXT: 'TXT.WA',
   KGH: 'KGH.WA', TPE: 'TPE.WA', ENA: 'ENA.WA', MUR: 'MUR.WA',
   SON: 'SON.WA', STX: 'STX.WA', DBC: 'DBC.WA', FRO: 'FRO.WA', BNP: 'BNP.WA',
+  PGE: 'PGE.WA', JSW: 'JSW.WA', MBK: 'MBK.WA', MIL: 'MIL.WA', ATT: 'ATT.WA',
+  CPS: 'CPS.WA', SPL: 'SPL.WA', COG: 'COG.WA', HUG: 'HUG.WA', TEN: 'TEN.WA',
+  GTC: 'GTC.WA', EAT: 'EAT.WA', MRC: 'MRC.WA', LWB: 'LWB.WA', DNP: 'DNP.WA',
+  ZAB: 'ZAB.WA', MBR: 'MBR.WA',
 };
 let cache;
 
