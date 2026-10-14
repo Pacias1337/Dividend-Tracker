@@ -20,11 +20,20 @@ Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglą
    ```
 3. Uruchom serwer:
    ```sh
-   node server.js
+   npm start
    ```
 4. Otwórz w przeglądarce [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
 Zatrzymaj serwer skrótem `Ctrl+C`. Jeśli port 4173 jest zajęty, ustaw zmienną środowiskową `PORT` przed uruchomieniem.
+
+## Edycja stylów
+
+Style źródłowe znajdują się w `src/styles.css`. Aplikacja używa Tailwind CSS 4; skompilowany `app.css` jest częścią repozytorium, więc do samego uruchomienia nie trzeba instalować zależności. Do przebudowania stylów potrzebne są Node.js 20+ i pnpm 11.25:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm run build
+```
 
 ## Dane i notowania
 

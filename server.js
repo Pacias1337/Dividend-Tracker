@@ -62,12 +62,13 @@ const server = http.createServer(async (req, res) => {
       return json(res, 500, { error: 'Nie można otworzyć logotypów spółek.' });
     }
   }
-  if (pathname === '/tailwind-poc.html') {
+  if (pathname === '/app.css' || pathname === '/app.js') {
     try {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      return res.end(await readFile(path.join(__dirname, 'tailwind-poc.html')));
+      const isCss = pathname === '/app.css';
+      res.writeHead(200, { 'content-type': `${isCss ? 'text/css' : 'text/javascript'}; charset=utf-8`, 'cache-control': 'no-store' });
+      return res.end(await readFile(path.join(__dirname, isCss ? 'app.css' : 'app.js')));
     } catch {
-      return json(res, 500, { error: 'Nie można otworzyć podglądu Tailwind.' });
+      return json(res, 500, { error: 'Nie można otworzyć plików aplikacji.' });
     }
   }
   if (pathname === '/' || pathname === '/index.html') {
