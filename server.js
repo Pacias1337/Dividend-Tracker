@@ -62,6 +62,15 @@ const server = http.createServer(async (req, res) => {
       return json(res, 500, { error: 'Nie można otworzyć logotypów spółek.' });
     }
   }
+  if (pathname === '/app.css' || pathname === '/app.js') {
+    try {
+      const isCss = pathname === '/app.css';
+      res.writeHead(200, { 'content-type': `${isCss ? 'text/css' : 'text/javascript'}; charset=utf-8`, 'cache-control': 'no-store' });
+      return res.end(await readFile(path.join(__dirname, isCss ? 'app.css' : 'app.js')));
+    } catch {
+      return json(res, 500, { error: 'Nie można otworzyć plików aplikacji.' });
+    }
+  }
   if (pathname === '/' || pathname === '/index.html') {
     try {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });

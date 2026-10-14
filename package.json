@@ -1,0 +1,13 @@
+{
+  "name": "dividend-tracker",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "tailwindcss -i src/styles.css -o app.css --minify",
+    "start": "node server.js"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}
