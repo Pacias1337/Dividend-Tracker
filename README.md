@@ -1,10 +1,31 @@
 # Dividend Tracker
 
-Uruchom lokalny serwer poleceniem `node server.js` i otwórz adres `http://127.0.0.1:4173` w przeglądarce.
+Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglądarce, a portfel i historia pozostają zapisane na tym urządzeniu.
 
-Aplikacja pobiera kursy GPW z publicznych notowań Yahoo Finance. Serwer lokalny pośredniczy w zapytaniach, aby ominąć blokadę CORS przeglądarki. Kursy odświeżają się co minutę; Yahoo oznacza część notowań GPW jako opóźnione, więc nie są to gwarantowane dane giełdowe w czasie rzeczywistym. Portfel pozostaje w pamięci lokalnej przeglądarki.
+## Wymagania
 
-<img width="1127" height="689" alt="image" src="https://github.com/user-attachments/assets/73211a93-c9b0-4f69-8cba-4eeb02d0790d" />
+- Node.js 18 lub nowszy
+- Połączenie z internetem do pobierania notowań Yahoo Finance
+- Nie trzeba instalować dodatkowych pakietów
 
+## Uruchomienie
 
-Aplikacja webowa tworzona w większości (jak nie w całości) przez Codexa.
+1. Sklonuj repozytorium:
+   ```sh
+   git clone https://github.com/Pacias1337/Dividend-Tracker.git
+   ```
+2. Przejdź do katalogu:
+   ```sh
+   cd Dividend-Tracker
+   ```
+3. Uruchom serwer:
+   ```sh
+   node server.js
+   ```
+4. Otwórz w przeglądarce [http://127.0.0.1:4173](http://127.0.0.1:4173).
+
+Zatrzymaj serwer skrótem `Ctrl+C`. Jeśli port 4173 jest zajęty, ustaw zmienną środowiskową `PORT` przed uruchomieniem.
+
+## Dane i notowania
+
+Portfel nie jest wysyłany na serwer. Aby przenieść go na inny komputer, zapisz kopię JSON w ustawieniach aplikacji i zaimportuj ją na drugim urządzeniu. Yahoo Finance może udostępniać opóźnione notowania lub czasowo nie zwracać części kursów; aplikacja nie gwarantuje danych w czasie rzeczywistym.
