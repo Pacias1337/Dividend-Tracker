@@ -62,6 +62,14 @@ const server = http.createServer(async (req, res) => {
       return json(res, 500, { error: 'Nie można otworzyć logotypów spółek.' });
     }
   }
+  if (pathname === '/tailwind-poc.html') {
+    try {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(await readFile(path.join(__dirname, 'tailwind-poc.html')));
+    } catch {
+      return json(res, 500, { error: 'Nie można otworzyć podglądu Tailwind.' });
+    }
+  }
   if (pathname === '/' || pathname === '/index.html') {
     try {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
