@@ -7,7 +7,6 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
 
 - Node.js 18 lub nowszy
 - Połączenie z internetem do pobierania notowań Yahoo Finance
-- Nie trzeba instalować dodatkowych pakietów
 
 ## Uruchomienie
 
