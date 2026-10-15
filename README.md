@@ -1,7 +1,7 @@
 # Dividend Tracker
 
 Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglądarce, a portfel i historia pozostają zapisane na tym urządzeniu.
-Aplikacja oferuje przejrzysty interfejs oraz statystyki, nie wymaga również logowania do brokera przez co wszystkie dane zostają tylko i wyłącznie na TWOIM urządzeniu.
+Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowych (jeśli chcesz abym dodał jakąś spółkę prosze o kontakt lub o feedback pod projektem)
 
 ## Wymagania
 
