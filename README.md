@@ -22,7 +22,11 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
    ```sh
    npm start
    ```
-4. Otwórz w przeglądarce [http://127.0.0.1:4173](http://127.0.0.1:4173).
+   Alternatywnie
+   ```sh
+   node server.js
+   ```
+5. Otwórz w przeglądarce [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
 Zatrzymaj serwer skrótem `Ctrl+C`. Jeśli port 4173 jest zajęty, ustaw zmienną środowiskową `PORT` przed uruchomieniem.
 
