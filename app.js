@@ -76,12 +76,51 @@ let prices=JSON.parse(localStorage.getItem('dividend-ike-prices')||'{}');let pri
 let portfolioHistory=JSON.parse(localStorage.getItem('dividend-ike-history')||'[]');if(!Array.isArray(portfolioHistory))portfolioHistory=[];let portfolioActivity=JSON.parse(localStorage.getItem('dividend-ike-activity')||'[]');if(!Array.isArray(portfolioActivity))portfolioActivity=[];let statsPeriod='week';let historyStartedAt=localStorage.getItem('dividend-ike-history-started')||new Date().toISOString();localStorage.setItem('dividend-ike-history-started',historyStartedAt);
 const money=n=>new Intl.NumberFormat('pl-PL',{style:'currency',currency:'PLN'}).format(n);
 const getCompany=t=>companies.find(c=>c.ticker===t);
+async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)){
+  const symbols=[...new Set(tickers)].filter(ticker=>getCompany(ticker));
+  if(!symbols.length)return;
+  try{
+    const response=await fetch(`/api/dividends?symbols=${encodeURIComponent(symbols.join(','))}`,{cache:'no-store'});
+    if(!response.ok)throw Error('Dividend data unavailable');
+    const data=await response.json();
+    let changed=false;
+    for(const [ticker,dividendData] of Object.entries(data.dividends||{})){
+      const company=getCompany(ticker);
+      if(!company||!Number.isFinite(dividendData?.amount)||dividendData.amount<0)continue;
+      const previousDividend=company.dividend;
+      company.dividend=dividendData.amount;
+      company.year=dividendData.year;
+      company.dividendStatus=dividendData.status;
+      company.dividendAsOf=dividendData.asOf;
+      company.dividendSourceUrl=dividendData.sourceUrl;
+      for(const holding of portfolio){
+        if(holding.ticker===ticker&&holding.year!=='własna'){
+          holding.dividend=dividendData.amount;
+          holding.year=dividendData.year;
+        }
+      }
+      const selectedTicker=document.querySelector('#company')?.value;
+      const dividendInput=document.querySelector('#dividend');
+      if(selectedTicker===ticker&&Number(dividendInput.value)===previousDividend){
+        dividendInput.value=dividendData.amount;
+      }
+      changed=true;
+    }
+    if(changed){
+      localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
+      render();
+      if(!document.querySelector('#modalback').classList.contains('hidden'))options();
+    }
+  }catch{
+    // Keep the most recently saved dividend values when the data source is unavailable.
+  }
+}
 function logoMarkup(ticker,className){const logo=window.companyLogos?.[ticker];return`<span class="${className}" aria-hidden="true">${logo?`<img src="${logo}" alt="" loading="lazy">`:`<span class="ticker-fallback">${ticker}</span>`}</span>`}
 function sortedPortfolio(){const name=t=>getCompany(t)?.name||t,alpha=(a,b)=>name(a.ticker).localeCompare(name(b.ticker),'pl'),field=document.querySelector('#portfolioSort')?.value||'name';return[...portfolio].sort((a,b)=>{if(field==='name')return portfolioSortDirection==='asc'?alpha(a,b):-alpha(a,b);const value=h=>Number.isFinite(prices[h.ticker])&&prices[h.ticker]>0?h.shares*prices[h.ticker]:null,av=value(a),bv=value(b);if(av===null||bv===null)return av===bv?alpha(a,b):av===null?1:-1;return(av-bv)*(portfolioSortDirection==='asc'?1:-1)||alpha(a,b)})}
 function render(){const rows=document.querySelector('#rows');rows.innerHTML='';document.querySelector('#count').textContent=`(${portfolio.length})`;document.querySelector('#empty').classList.toggle('hidden',portfolio.length>0);
   let annual=0,value=0,priced=0;for(const holding of sortedPortfolio()){const c=getCompany(holding.ticker);if(!c)continue;const row=document.createElement('tr');const price=prices[c.ticker];const dividend=holding.dividend??c.dividend;const income=holding.shares*dividend;annual+=income;if(price){value+=holding.shares*price;priced+=holding.shares*price}
     const yieldRate=price>0?dividend/price*100:null,warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>':'';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button class="edit" data-edit="${c.ticker}">Edytuj</button> <button class="delete" aria-label="Usuń ${c.name}" data-delete="${c.ticker}">×</button></td>`;rows.append(row)}
+    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button class="edit" data-edit="${c.ticker}">Edytuj</button> <button class="delete" aria-label="Usuń ${c.name}" data-delete="${c.ticker}">×</button></td>`;rows.append(row)}
   document.querySelector('#annual').textContent=money(annual);document.querySelector('#taxSavings').textContent=money(annual*.19);document.querySelector('#value').textContent=priced?money(value):'—';document.querySelector('#value-sub').textContent=priced?'Na podstawie ostatnich pobranych kursów':'Dodaj liczbę akcji i sprawdź kurs';document.querySelector('#yield').textContent=value?`${(annual/value*100).toFixed(2).replace('.',',')}%`:'—';renderSectorChart();renderStats();localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
 }
 function recordActivity(action,ticker,shares){portfolioActivity.unshift({at:new Date().toISOString(),action,ticker,shares});portfolioActivity=portfolioActivity.slice(0,500);localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))}
@@ -99,7 +138,7 @@ function openForm(ticker=null){editTicker=ticker;document.querySelector('#compan
 function closeForm(){document.querySelector('#modalback').classList.add('hidden');togglePicker(false);document.querySelector('#companyTrigger').disabled=false}
 document.querySelector('#companyTrigger').addEventListener('click',()=>togglePicker());
 document.querySelector('#companySearch').addEventListener('input',options);document.querySelector('#companySort').addEventListener('change',options);document.querySelector('#sortDirection').addEventListener('click',()=>{sortDirection=sortDirection==='asc'?'desc':'asc';updateSortDirection();options()});
-document.querySelector('#companyOptions').addEventListener('click',e=>{const option=e.target.closest('[data-company]');if(!option)return;setCompany(option.dataset.company);document.querySelector('#dividend').value=getCompany(option.dataset.company).dividend;togglePicker(false);document.querySelector('#companyTrigger').focus()});
+document.querySelector('#companyOptions').addEventListener('click',e=>{const option=e.target.closest('[data-company]');if(!option)return;setCompany(option.dataset.company);document.querySelector('#dividend').value=getCompany(option.dataset.company).dividend;togglePicker(false);document.querySelector('#companyTrigger').focus();refreshDividends([option.dataset.company])});
 document.querySelector('#companyTrigger').addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();togglePicker(true)}});
 document.querySelector('#companyOptions').addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const options=[...document.querySelectorAll('#companyOptions [role="option"]')],index=options.indexOf(document.activeElement);if(!options.length)return;const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus()});
 document.querySelector('#form').addEventListener('submit',e=>{e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),dividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(dividend)||dividend<0)return;const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję':'Dodano pozycję';if(holding){holding.shares=shares;holding.dividend=dividend;holding.year=dividend===company.dividend?company.year:'własna'}else portfolio.push({ticker,shares,dividend,year:dividend===company.dividend?company.year:'własna'});recordActivity(action,ticker,shares);saveHistorySnapshot(true);closeForm();render();refreshPrices()});
@@ -118,4 +157,4 @@ const settingsDialog=document.querySelector('#settingsDialog');document.querySel
 document.querySelector('#exportBackup').addEventListener('click',()=>{const backup={app:'Dividend Tracker',version:1,createdAt:new Date().toISOString(),data:{portfolio,prices,priceTimes,history:portfolioHistory,activity:portfolioActivity,historyStartedAt,theme:darkMode?'dark':'light'}},url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download=`dividend-tracker-kopia-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
 document.querySelector('#importBackup').addEventListener('click',()=>{settingsDialog.close();document.querySelector('#backupFile').click()});document.querySelector('#backupFile').addEventListener('change',async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;if(file.size>5_000_000){toast('Plik kopii jest za duży');return}try{const backup=JSON.parse(await file.text());if(!validateBackup(backup)){toast('Plik nie jest prawidłową kopią Dividend Tracker');return}if(!confirm('Przywrócenie kopii zastąpi obecny portfel i historię. Kontynuować?'))return;const values={'dividend-ike-portfolio':backup.data.portfolio,'dividend-ike-prices':backup.data.prices,'dividend-ike-price-times':backup.data.priceTimes,'dividend-ike-history':backup.data.history,'dividend-ike-activity':backup.data.activity,'dividend-ike-history-started':backup.data.historyStartedAt,'dividend-ike-theme':backup.data.theme};for(const [key,value] of Object.entries(values))localStorage.setItem(key,typeof value==='string'?value:JSON.stringify(value));location.reload()}catch{toast('Nie udało się odczytać pliku kopii')}});
 function toast(message){const el=document.querySelector('#toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),2400)}
-document.querySelector('#refresh').onclick=()=>refreshPrices(true);render();refreshPrices();setInterval(()=>{if(!document.hidden)refreshPrices()},60_000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshPrices()});
+document.querySelector('#refresh').onclick=()=>refreshPrices(true);render();refreshDividends();refreshPrices();setInterval(()=>{if(!document.hidden)refreshPrices()},60_000);setInterval(()=>{if(!document.hidden)refreshDividends()},6*60*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshPrices()});
