@@ -1454,3 +1454,86 @@ transition:none!important;
 animation:none!important
 }
 }
+
+.table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.table-sort:hover,
+.table-sort:focus-visible {
+  color: var(--green);
+}
+
+.sort-indicator {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.edit,
+.delete {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 9px;
+}
+
+.edit {
+  border: 1px solid #dce4de;
+  background: #fff;
+  color: #3a5345;
+}
+
+.edit:hover,
+.edit:focus-visible {
+  border-color: #b9d6c3;
+  background: #edf5ef;
+  color: #1b6746;
+}
+
+.delete {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #b65e5e;
+}
+
+.delete:hover,
+.delete:focus-visible {
+  border-color: #f4d5d3;
+  background: #fff0ef;
+  color: #9e3333;
+}
+
+.action-icon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dark-mode .edit {
+  border-color: #405247;
+  background: #202e26;
+  color: #e7eee9;
+}
+
+.dark-mode .edit:hover,
+.dark-mode .edit:focus-visible {
+  border-color: #527962;
+  background: #2b3c31;
+  color: #a5e2b8;
+}
