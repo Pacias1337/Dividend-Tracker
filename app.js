@@ -72,16 +72,70 @@ const companies=[
 ];
 const defaultPortfolio=['PZU','PEO','ACP','GPW'].map(ticker=>({ticker,shares:0}));
 let portfolio=JSON.parse(localStorage.getItem('dividend-ike-portfolio')||'null')||defaultPortfolio;
-let prices=JSON.parse(localStorage.getItem('dividend-ike-prices')||'{}');let priceTimes=JSON.parse(localStorage.getItem('dividend-ike-price-times')||'{}');if(!Object.keys(priceTimes).length)prices={};let editTicker=null,sortDirection='asc',portfolioSortDirection='asc';
+let prices=JSON.parse(localStorage.getItem('dividend-ike-prices')||'{}');let priceTimes=JSON.parse(localStorage.getItem('dividend-ike-price-times')||'{}');if(!Object.keys(priceTimes).length)prices={};let editTicker=null,sortDirection='asc',portfolioSort={column:null,direction:'asc'};
 let portfolioHistory=JSON.parse(localStorage.getItem('dividend-ike-history')||'[]');if(!Array.isArray(portfolioHistory))portfolioHistory=[];let portfolioActivity=JSON.parse(localStorage.getItem('dividend-ike-activity')||'[]');if(!Array.isArray(portfolioActivity))portfolioActivity=[];let statsPeriod='week';let historyStartedAt=localStorage.getItem('dividend-ike-history-started')||new Date().toISOString();localStorage.setItem('dividend-ike-history-started',historyStartedAt);
 const money=n=>new Intl.NumberFormat('pl-PL',{style:'currency',currency:'PLN'}).format(n);
 const getCompany=t=>companies.find(c=>c.ticker===t);
 function logoMarkup(ticker,className){const logo=window.companyLogos?.[ticker];return`<span class="${className}" aria-hidden="true">${logo?`<img src="${logo}" alt="" loading="lazy">`:`<span class="ticker-fallback">${ticker}</span>`}</span>`}
-function sortedPortfolio(){const name=t=>getCompany(t)?.name||t,alpha=(a,b)=>name(a.ticker).localeCompare(name(b.ticker),'pl'),field=document.querySelector('#portfolioSort')?.value||'name';return[...portfolio].sort((a,b)=>{if(field==='name')return portfolioSortDirection==='asc'?alpha(a,b):-alpha(a,b);const value=h=>Number.isFinite(prices[h.ticker])&&prices[h.ticker]>0?h.shares*prices[h.ticker]:null,av=value(a),bv=value(b);if(av===null||bv===null)return av===bv?alpha(a,b):av===null?1:-1;return(av-bv)*(portfolioSortDirection==='asc'?1:-1)||alpha(a,b)})}
+function sortedPortfolio() {
+  const getCompanyName = (ticker) => getCompany(ticker)?.name || ticker;
+
+  const getSortValue = (holding) => {
+    const company = getCompany(holding.ticker);
+    const price = prices[holding.ticker];
+    const dividend = holding.dividend ?? company?.dividend ?? 0;
+    const hasPrice = Number.isFinite(price) && price > 0;
+
+    switch (portfolioSort.column) {
+      case 'shares': return holding.shares;
+      case 'price': return hasPrice ? price : null;
+      case 'value': return hasPrice ? holding.shares * price : null;
+      case 'dividend': return dividend;
+      case 'income': return holding.shares * dividend;
+      case 'yield': return hasPrice ? dividend / price * 100 : null;
+      default: return getCompanyName(holding.ticker);
+    }
+  };
+
+  return [...portfolio].sort((left, right) => {
+    const leftValue = getSortValue(left);
+    const rightValue = getSortValue(right);
+    const nameOrder = getCompanyName(left.ticker).localeCompare(getCompanyName(right.ticker), "pl");
+
+    if (leftValue === null || rightValue === null) {
+      if (leftValue === rightValue) return nameOrder;
+      return leftValue === null ? 1 : -1;
+    }
+
+    const comparison = typeof leftValue === "string"
+      ? leftValue.localeCompare(rightValue, "pl")
+      : leftValue - rightValue;
+    const direction = portfolioSort.direction === "asc" ? 1 : -1;
+
+    return comparison * direction || nameOrder;
+  });
+}
+
+function updatePortfolioSortIndicators() {
+  document.querySelectorAll(".table-sort").forEach((button) => {
+    const isActive = button.dataset.sort === portfolioSort.column;
+    const indicator = button.querySelector(".sort-indicator");
+    const header = button.closest("th");
+
+    indicator.textContent = portfolioSort.direction === "asc" ? "↑" : "↓";
+    indicator.classList.toggle("hidden", !isActive);
+    header.setAttribute("aria-sort", isActive
+      ? (portfolioSort.direction === "asc" ? "ascending" : "descending")
+      : "none");
+    button.setAttribute("aria-label", `Sortuj według ${button.dataset.label} ${portfolioSort.direction === "asc" ? "rosnąco" : "malejąco"}`);
+  });
+}
+
 function render(){const rows=document.querySelector('#rows');rows.innerHTML='';document.querySelector('#count').textContent=`(${portfolio.length})`;document.querySelector('#empty').classList.toggle('hidden',portfolio.length>0);
   let annual=0,value=0,priced=0;for(const holding of sortedPortfolio()){const c=getCompany(holding.ticker);if(!c)continue;const row=document.createElement('tr');const price=prices[c.ticker];const dividend=holding.dividend??c.dividend;const income=holding.shares*dividend;annual+=income;if(price){value+=holding.shares*price;priced+=holding.shares*price}
     const yieldRate=price>0?dividend/price*100:null,warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>':'';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button class="edit" data-edit="${c.ticker}">Edytuj</button> <button class="delete" aria-label="Usuń ${c.name}" data-delete="${c.ticker}">×</button></td>`;rows.append(row)}
+    const holdingValue = price > 0 ? holding.shares * price : null;
+    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${holdingValue === null ? '—' : money(holdingValue)}</td><td class="num">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button class="edit" type="button" data-edit="${c.ticker}" aria-label="Edytuj ${c.name}" title="Edytuj ${c.name}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button class="delete" type="button" aria-label="Usuń ${c.name}" title="Usuń ${c.name}" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;rows.append(row)}
   document.querySelector('#annual').textContent=money(annual);document.querySelector('#taxSavings').textContent=money(annual*.19);document.querySelector('#value').textContent=priced?money(value):'—';document.querySelector('#value-sub').textContent=priced?'Na podstawie ostatnich pobranych kursów':'Dodaj liczbę akcji i sprawdź kurs';document.querySelector('#yield').textContent=value?`${(annual/value*100).toFixed(2).replace('.',',')}%`:'—';renderSectorChart();renderStats();localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
 }
 function recordActivity(action,ticker,shares){portfolioActivity.unshift({at:new Date().toISOString(),action,ticker,shares});portfolioActivity=portfolioActivity.slice(0,500);localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))}
@@ -103,10 +157,37 @@ document.querySelector('#companyOptions').addEventListener('click',e=>{const opt
 document.querySelector('#companyTrigger').addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){e.preventDefault();togglePicker(true)}});
 document.querySelector('#companyOptions').addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const options=[...document.querySelectorAll('#companyOptions [role="option"]')],index=options.indexOf(document.activeElement);if(!options.length)return;const next=e.key==='Home'?0:e.key==='End'?options.length-1:(index+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;options[next].focus()});
 document.querySelector('#form').addEventListener('submit',e=>{e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),dividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(dividend)||dividend<0)return;const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję':'Dodano pozycję';if(holding){holding.shares=shares;holding.dividend=dividend;holding.year=dividend===company.dividend?company.year:'własna'}else portfolio.push({ticker,shares,dividend,year:dividend===company.dividend?company.year:'własna'});recordActivity(action,ticker,shares);saveHistorySnapshot(true);closeForm();render();refreshPrices()});
-document.querySelector('#portfolioSort').addEventListener('change',render);document.querySelector('#portfolioSortDirection').addEventListener('click',()=>{portfolioSortDirection=portfolioSortDirection==='asc'?'desc':'asc';const button=document.querySelector('#portfolioSortDirection'),label=portfolioSortDirection==='asc'?'Sortuj rosnąco':'Sortuj malejąco';button.setAttribute('aria-label',label);button.title=label;button.setAttribute('aria-pressed',String(portfolioSortDirection==='desc'));render()});document.querySelector('#add').onclick=()=>openForm();document.querySelector('#cancel').onclick=closeForm;document.querySelector('#close-modal').onclick=closeForm;document.querySelector('#modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeForm()});document.querySelector('#form').addEventListener('click',e=>{if(!e.target.closest('#companyPicker')&&document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true')togglePicker(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('#modalback').classList.contains('hidden')){if(document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true'){togglePicker(false);document.querySelector('#companyTrigger').focus()}else closeForm()}});
+document.querySelector('#rows').closest('table').querySelector('thead').addEventListener('click', (event) => {
+  const button = event.target.closest('.table-sort');
+  if (!button) return;
+
+  if (portfolioSort.column === button.dataset.sort) {
+    portfolioSort.direction = portfolioSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    portfolioSort = { column: button.dataset.sort, direction: 'asc' };
+  }
+
+  updatePortfolioSortIndicators();
+  render();
+});document.querySelector('#add').onclick=()=>openForm();document.querySelector('#cancel').onclick=closeForm;document.querySelector('#close-modal').onclick=closeForm;document.querySelector('#modalback').addEventListener('click',e=>{if(e.target.id==='modalback')closeForm()});document.querySelector('#form').addEventListener('click',e=>{if(!e.target.closest('#companyPicker')&&document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true')togglePicker(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.querySelector('#modalback').classList.contains('hidden')){if(document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true'){togglePicker(false);document.querySelector('#companyTrigger').focus()}else closeForm()}});
 let activeYieldTooltip=null;function showYieldTooltip(button){activeYieldTooltip?.remove();const tooltip=document.createElement('div');tooltip.className='yield-tooltip';tooltip.id='yieldTooltip';tooltip.setAttribute('role','tooltip');tooltip.textContent=button.dataset.tooltip;document.body.append(tooltip);const rect=button.getBoundingClientRect(),tip=tooltip.getBoundingClientRect(),left=Math.max(10,Math.min(innerWidth-tip.width-10,rect.left+rect.width/2-tip.width/2)),top=rect.top>=tip.height+12?rect.top-tip.height-10:Math.min(innerHeight-tip.height-10,rect.bottom+10);tooltip.style.left=`${left}px`;tooltip.style.top=`${Math.max(10,top)}px`;button.setAttribute('aria-describedby',tooltip.id);activeYieldTooltip=tooltip}function hideYieldTooltip(button){if(!button)return;button.removeAttribute('aria-describedby');activeYieldTooltip?.remove();activeYieldTooltip=null}
 document.querySelector('#rows').addEventListener('pointerover',e=>{const button=e.target.closest('.yield-warning');if(button)showYieldTooltip(button)});document.querySelector('#rows').addEventListener('pointerout',e=>{const button=e.target.closest('.yield-warning');if(button&&!button.contains(e.relatedTarget))hideYieldTooltip(button)});document.querySelector('#rows').addEventListener('focusin',e=>{const button=e.target.closest('.yield-warning');if(button)showYieldTooltip(button)});document.querySelector('#rows').addEventListener('focusout',e=>{const button=e.target.closest('.yield-warning');if(button)hideYieldTooltip(button)});
-document.querySelector('#rows').addEventListener('click',e=>{const t=e.target.dataset.edit||e.target.dataset.delete;if(!t)return;if(e.target.dataset.edit)openForm(t);else{const holding=portfolio.find(x=>x.ticker===t);recordActivity('Usunięto pozycję',t,holding?.shares||0);portfolio=portfolio.filter(x=>x.ticker!==t);saveHistorySnapshot(true);render()}});
+document.querySelector('#rows').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-edit], [data-delete]');
+  if (!button) return;
+
+  const ticker = button.dataset.edit || button.dataset.delete;
+  if (button.dataset.edit) {
+    openForm(ticker);
+    return;
+  }
+
+  const holding = portfolio.find((item) => item.ticker === ticker);
+  recordActivity('Usunięto pozycję', ticker, holding?.shares || 0);
+  portfolio = portfolio.filter((item) => item.ticker !== ticker);
+  saveHistorySnapshot(true);
+  render();
+});
 function setView(view){const stats=view==='stats';document.querySelector('#portfolioView').classList.toggle('hidden',stats);document.querySelector('#statsView').classList.toggle('hidden',!stats);document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats));document.querySelector('#statsTab').setAttribute('aria-selected',String(stats));if(stats)renderStats()}
 const themeToggle=document.querySelector('#themeToggle');let darkMode=localStorage.getItem('dividend-ike-theme')==='dark';function setTheme(dark){darkMode=dark;document.body.classList.toggle('dark-mode',dark);themeToggle.setAttribute('aria-checked',String(dark));themeToggle.title=dark?'Włącz tryb jasny':'Włącz tryb ciemny';localStorage.setItem('dividend-ike-theme',dark?'dark':'light')}setTheme(darkMode);themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));document.querySelectorAll('.period-tab').forEach(button=>button.addEventListener('click',()=>{statsPeriod=button.dataset.period;renderStats()}));
