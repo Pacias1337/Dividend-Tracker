@@ -6,7 +6,7 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
 ## Wymagania
 
 - Node.js 18 lub nowszy
-- Połączenie z internetem do pobierania notowań Yahoo Finance
+- Połączenie z internetem do pobierania notowań i danych o dywidendach
 
 ## Uruchomienie
 
@@ -41,4 +41,4 @@ pnpm run build
 
 ## Dane i notowania
 
-Portfel nie jest wysyłany na serwer. Aby przenieść go na inny komputer, zapisz kopię JSON w ustawieniach aplikacji i zaimportuj ją na drugim urządzeniu. Yahoo Finance może udostępniać opóźnione notowania lub czasowo nie zwracać części kursów; aplikacja nie gwarantuje danych w czasie rzeczywistym.
+Portfel nie jest wysyłany na serwer. Aby przenieść go na inny komputer, zapisz kopię JSON w ustawieniach aplikacji i zaimportuj ją na drugim urządzeniu. Kursy akcji są pobierane z Yahoo Finance. Kwoty dywidend pochodzą z publicznych uchwał WZA udostępnianych przez Agent Rynku; jeśli nie ma zatwierdzonej uchwały z bieżącego roku, aplikacja sprawdza ostatnią uchwaloną wypłatę, a następnie historię dywidend Yahoo Finance. Dane są buforowane lokalnie przez serwer przez maksymalnie sześć godzin. Brak danych w źródle nie oznacza, że spółka nie wypłaca dywidendy. Yahoo Finance może udostępniać opóźnione notowania lub czasowo nie zwracać części kursów; aplikacja nie gwarantuje danych w czasie rzeczywistym.

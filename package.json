@@ -4,7 +4,8 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "build": "tailwindcss -i src/styles.css -o app.css --minify",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
