@@ -592,7 +592,6 @@ tbody tr:hover  {
   color:var(--muted);
   font-size:12px;
   line-height:1.5;
-  margin:20px 0 20px
 }
 .period-tabs  {
   display:flex;
