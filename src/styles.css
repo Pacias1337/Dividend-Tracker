@@ -63,6 +63,15 @@ button:focus-visible,input:focus-visible,select:focus-visible  {
   place-items:center;
   font-size:21px
 }
+.logo svg,.modalmark svg {
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round
+}
 .topright  {
   display:flex;
   align-items:center;

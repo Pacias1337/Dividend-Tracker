@@ -231,29 +231,25 @@ const server = http.createServer(async (req, res) =>  {
 });
 const port = Number(process.env.PORT) || 4173;
 if (require.main === module)  {
-  const tryListen = (candidatePort, attempt = 0) => {
-    const handleError = (error) => {
-      server.removeListener('error', handleError);
+  let currentPort = port;
+  server.once('listening', () => {
+    console.log(`Dywidendy IKE: http://127.0.0.1:${server.address().port}`);
+  });
+  const listen = () => server.listen(currentPort, '127.0.0.1');
 
-      if (error.code === 'EADDRINUSE' && !process.env.PORT && attempt < 10) {
-        const nextPort = candidatePort + 1;
-        console.warn(`Port ${candidatePort} jest zajęty. Próbuję portu ${nextPort}…`);
-        tryListen(nextPort, attempt + 1);
-        return;
-      }
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE' && !process.env.PORT && currentPort < port + 10) {
+      currentPort += 1;
+      console.warn(`Port ${currentPort - 1} jest zajęty. Próbuję portu ${currentPort}…`);
+      listen();
+      return;
+    }
 
-      console.error(`Nie można uruchomić serwera na porcie ${candidatePort}: ${error.message}`);
-      process.exitCode = 1;
-    };
+    console.error(`Nie można uruchomić serwera na porcie ${currentPort}: ${error.message}`);
+    process.exitCode = 1;
+  });
 
-    server.once('error', handleError);
-    server.listen(candidatePort, '127.0.0.1', () => {
-      server.removeListener('error', handleError);
-      console.log(`Dywidendy IKE: http://127.0.0.1:${candidatePort}`);
-    });
-  };
-
-  tryListen(port);
+  listen();
 }
 module.exports =  {
   callPublicDividends,

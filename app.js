@@ -653,10 +653,7 @@ async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) 
 }
 function logoMarkup(ticker,className) {
   const logo=window.companyLogos?.[ticker];
-  return`<span class="${className}" aria-hidden="true">${logo?`<img src="${logo}" alt="" loading="lazy">`:`<span class="ticker-fallback">$ {
-    ticker
-  }
-  </span>`}</span>`
+  return`<span class="${className}" aria-hidden="true">${logo?`<img src="${logo}" alt="" loading="lazy">`:`<span class="ticker-fallback">${ticker}</span>`}</span>`
 }
 function sortedPortfolio()  {
   const getCompanyName = (ticker) => getCompany(ticker)?.name || ticker;
@@ -709,13 +706,7 @@ function render() {
     }
     const yieldRate=price>0?dividend/price*100: null,
     warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>': '';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: $ {
-      new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')
-    }
-    `:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: $ {
-      new Date(c.dividendAsOf).toLocaleDateString('pl-PL')
-    }
-    `:''}">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${c.name}" title="Edytuj" data-edit="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${c.name}" title="Usuń" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
+    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${c.name}" title="Edytuj" data-edit="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${c.name}" title="Usuń" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
     rows.append(row)
   }
   document.querySelector('#annual').textContent=money(annual);
@@ -925,10 +916,7 @@ function options() {
   filtered.sort((a,b)=> {
     if(field==='name')return direction==='asc'?a.name.localeCompare(b.name,'pl'): b.name.localeCompare(a.name,'pl');const av=field==='price'?prices[a.ticker]: a.dividend,bv=field==='price'?prices[b.ticker]: b.dividend;if(av==null)return bv==null?a.name.localeCompare(b.name,'pl'): 1;if(bv==null)return-1;return direction==='asc'?av-bv: bv-av
   });
-  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${c.ticker}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${c.ticker}" title="${priceTimes[c.ticker]?`Ostatnie notowanie: $ {
-    new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')
-  }
-  `:'Brak czasu notowania'}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${c.name}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono spółki.</div>'
+  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${c.ticker}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${c.ticker}" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${c.name}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono spółki.</div>'
 }
 function setCompany(ticker) {
   const company=getCompany(ticker);
