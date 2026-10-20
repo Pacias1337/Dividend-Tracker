@@ -6,7 +6,7 @@ Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglą
   <img src="docs/screenshots/dashboard_mixtheme.jpg" alt="Dividend Tracker w trybie jasnym i ciemnym" width="900">
 </p>
 
-Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowych. Jeśli chcesz, abym dodał jakąś spółkę, napisz do mnie lub zostaw feedback pod projektem.
+Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowych. (Jeśli chcesz, abym dodał jakąś spółkę, napisz do mnie lub zostaw feedback pod projektem).
 
 ## Funkcje
 
