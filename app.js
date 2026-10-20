@@ -781,7 +781,7 @@ function renderStats() {
 function renderHistoryChart(points) {
   const svg=document.querySelector('#historyChart'),
   width=760,
-  left=58,
+  left=105,
   right=740,
   top=22,
   bottom=177,
