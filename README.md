@@ -8,6 +8,19 @@ Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglą
 
 Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowych. (Jeśli chcesz, abym dodał jakąś spółkę, napisz do mnie lub zostaw feedback pod projektem).
 
+## Wsparcie projektu
+
+Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplikacja Ci się przydaje, możesz wesprzeć jej dalszy rozwój, stawiając mi kawę.
+
+<p align="center">
+  <a href="https://buycoffee.to/pacias1337">
+    <img
+      src="https://img.shields.io/badge/☕-Postaw%20mi%20kawę-F5C542?style=for-the-badge&labelColor=20252B"
+      alt="Postaw mi kawę na BuyCoffee.to"
+    >
+  </a>
+</p>
+
 ## Funkcje
 
 - **Szacowana dywidenda roczna** netto na IKE (bez podatku Belki) oraz kwota zaoszczędzona na podatku
