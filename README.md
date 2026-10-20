@@ -10,7 +10,7 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
 
 ## Wsparcie projektu
 
-Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplikacja Ci się przydaje, możesz wesprzeć jej dalszy rozwój, stawiając mi kawę.
+Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplikacja Ci się przydaje, możesz docenić moją pracę stawiając mi kawę (albo białego dzika).
 
 <p align="center">
   <a href="https://buycoffee.to/pacias1337">
