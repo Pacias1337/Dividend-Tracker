@@ -26,7 +26,7 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
 Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 
 <p align="center">
-  <img src="docs/screenshots/wallet-preview.png" alt="Widok portfela" width="700">
+  <img src="docs/screenshots/wallet.png" alt="Widok portfela" width="700">
 </p>
 
 ### Statystyki
