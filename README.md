@@ -26,7 +26,7 @@ Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowy
 Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 
 <p align="center">
-  <img src="docs/screenshots/portfel.png" alt="Widok portfela" width="700">
+  <img src="docs/screenshots/wallet-preview.png" alt="Widok portfela" width="700">
 </p>
 
 ### Statystyki
@@ -34,14 +34,8 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 Zmiana wartości portfela w czasie i historia zmian.
 
 <p align="center">
-  <img src="docs/screenshots/statystyki.png" alt="Widok statystyk" width="700">
+  <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
 </p>
-
-### Tryb jasny i ciemny
-
-| Jasny | Ciemny |
-| --- | --- |
-| <img src="docs/screenshots/portfel.png" alt="Portfel, tryb jasny" width="400"> | <img src="docs/screenshots/portfel-ciemny.png" alt="Portfel, tryb ciemny" width="400"> |
 
 ## Wymagania
 
