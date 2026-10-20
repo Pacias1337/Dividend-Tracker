@@ -231,7 +231,29 @@ const server = http.createServer(async (req, res) =>  {
 });
 const port = Number(process.env.PORT) || 4173;
 if (require.main === module)  {
-  server.listen(port, '127.0.0.1', () => console.log(`Dywidendy IKE: http://127.0.0.1:${port}`));
+  const tryListen = (candidatePort, attempt = 0) => {
+    const handleError = (error) => {
+      server.removeListener('error', handleError);
+
+      if (error.code === 'EADDRINUSE' && !process.env.PORT && attempt < 10) {
+        const nextPort = candidatePort + 1;
+        console.warn(`Port ${candidatePort} jest zajęty. Próbuję portu ${nextPort}…`);
+        tryListen(nextPort, attempt + 1);
+        return;
+      }
+
+      console.error(`Nie można uruchomić serwera na porcie ${candidatePort}: ${error.message}`);
+      process.exitCode = 1;
+    };
+
+    server.once('error', handleError);
+    server.listen(candidatePort, '127.0.0.1', () => {
+      server.removeListener('error', handleError);
+      console.log(`Dywidendy IKE: http://127.0.0.1:${candidatePort}`);
+    });
+  };
+
+  tryListen(port);
 }
 module.exports =  {
   callPublicDividends,
