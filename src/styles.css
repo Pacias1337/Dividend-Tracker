@@ -1476,7 +1476,7 @@ body.dark-mode  {
 .sim-fields label,.wizard label,.withdrawal-input label { display:grid; gap:6px; min-width:0; color:var(--dark); font-size:12px; font-weight:600 }
 .sim-fields input,.wizard input,.withdrawal-input input { width:100%; min-width:0; height:42px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--white); color:var(--dark); font:inherit }
 .sim-fields input:focus,.wizard input:focus,.withdrawal-input input:focus { outline:2px solid #168256; outline-offset:1px }
-.limit-field { max-width:360px }
+.limit-field { max-width:360px; grid-template-columns:minmax(0,1fr) }
 .wizard,.existing-form { margin:18px 0; padding:20px; border:1px solid var(--line); border-radius:14px; background:var(--white) }
 .wizard h3,.existing-form h3,.simulation-results h3,.withdrawal-panel h3 { margin:0 0 10px; color:var(--dark); font-size:18px }
 .wizard p,.existing-form p { max-width:70ch; color:var(--muted); font-size:13px; line-height:1.6 }
@@ -1516,6 +1516,7 @@ body.dark-mode  {
 .glossary dt { font-weight:700 }.glossary dd { margin:0; color:var(--muted) }
 .tour-toggle { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:6px 10px; font-size:12px }
 .tour-overlay { position:fixed; inset:0; z-index:9998; pointer-events:none }
+.tour-overlay:not(.is-open) { display:none }
 .tour-overlay.has-no-spotlight { background:rgba(12,25,18,.58) }
 .tour-spotlight { position:fixed; z-index:1; border:2px solid #69c493; border-radius:12px; box-shadow:0 0 0 9999px rgba(12,25,18,.58),0 0 0 5px rgba(105,196,147,.2); pointer-events:none }
 .tour-card { position:fixed; z-index:2; right:20px; bottom:20px; width:min(420px,calc(100vw - 32px)); padding:20px; border:1px solid var(--line); border-radius:14px; background:var(--white); color:var(--dark); box-shadow:0 16px 48px rgba(0,0,0,.2); pointer-events:auto }
