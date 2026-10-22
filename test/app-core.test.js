@@ -13,6 +13,9 @@ test('formats money and percentages using Polish locale', () => {
   assert.match(AppCore.money(1234.5), /1\s?234,50\s?zł/);
   assert.equal(AppCore.percent(0.125), '12,5%');
   assert.equal(AppCore.percent(null), '—');
+  assert.equal(AppCore.parseDecimal('0,125'), 0.125);
+  assert.equal(AppCore.parseDecimal('1.25'), 1.25);
+  assert.equal(Number.isNaN(AppCore.parseDecimal('')), true);
 });
 
 test('reports exchange sessions by local exchange time', () => {

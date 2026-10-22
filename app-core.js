@@ -2,6 +2,7 @@
   const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const percent = value => value === null || !Number.isFinite(value) ? '—' : `${(value * 100).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}%`;
   const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const parseDecimal = value => { const normalized = String(value).trim().replace(',', '.'); return normalized ? Number(normalized) : NaN; };
   function isMarketOpen(symbols, date = new Date()) {
     return symbols.some(symbol => {
       const zone = symbol?.endsWith('.WA') ? 'Europe/Warsaw' : symbol?.endsWith('.DE') || symbol?.endsWith('.AS') ? 'Europe/Berlin' : null;
@@ -36,7 +37,7 @@
     if (data.tour !== undefined && (!data.tour || typeof data.tour.completed !== 'boolean' || !Number.isInteger(data.tour.lastStep) || data.tour.lastStep < -1 || data.tour.lastStep >= 9)) return false;
     return Object.entries(data.prices).every(([ticker, value]) => known.has(ticker) && Number.isFinite(value) && value > 0) && Object.entries(data.priceTimes).every(([ticker, value]) => known.has(ticker) && validDate(value));
   }
-  const api = { calculateHolding, escapeHtml, isMarketOpen, money, percent, summarizePortfolio, validateBackup };
+  const api = { calculateHolding, escapeHtml, isMarketOpen, money, parseDecimal, percent, summarizePortfolio, validateBackup };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.AppCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);
