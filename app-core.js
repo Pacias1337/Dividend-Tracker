@@ -34,7 +34,7 @@
     if (!data.activity.every(a => a && validDate(a.at) && known.has(a.ticker) && ['Dodano pozycję', 'Zaktualizowano pozycję', 'Usunięto pozycję'].includes(a.action) && Number.isFinite(a.shares) && a.shares >= 0 && (a.valueChange === undefined || a.valueChange === null || Number.isFinite(a.valueChange)))) return false;
     if (!validAnalysisFields(data)) return false;
     if (data.simulation !== undefined && !validSimulationState(data.simulation)) return false;
-    if (data.tour !== undefined && (!data.tour || typeof data.tour.completed !== 'boolean' || !Number.isInteger(data.tour.lastStep) || data.tour.lastStep < -1 || data.tour.lastStep >= 9)) return false;
+    if (data.tour !== undefined && (!data.tour || typeof data.tour.completed !== 'boolean' || !Number.isInteger(data.tour.lastStep) || data.tour.lastStep < -1 || data.tour.lastStep >= 10)) return false;
     return Object.entries(data.prices).every(([ticker, value]) => known.has(ticker) && Number.isFinite(value) && value > 0) && Object.entries(data.priceTimes).every(([ticker, value]) => known.has(ticker) && validDate(value));
   }
   const api = { calculateHolding, escapeHtml, isMarketOpen, money, parseDecimal, percent, summarizePortfolio, validateBackup };

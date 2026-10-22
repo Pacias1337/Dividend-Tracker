@@ -40,5 +40,7 @@ test('accepts old backup copies without optional fields, including SPL', () => {
     },
   };
   assert.equal(AppCore.validateBackup(backup, { tickers: ['PZU'], validAnalysisFields: validBackupFields, validSimulationState }), true);
+  assert.equal(AppCore.validateBackup({ ...backup, data: { ...backup.data, tour: { completed: false, lastStep: 9 } } }, { tickers: ['PZU'], validAnalysisFields: validBackupFields, validSimulationState }), true);
+  assert.equal(AppCore.validateBackup({ ...backup, data: { ...backup.data, tour: { completed: false, lastStep: 10 } } }, { tickers: ['PZU'], validAnalysisFields: validBackupFields, validSimulationState }), false);
   assert.equal(AppCore.validateBackup({ ...backup, version: 2 }, { tickers: ['PZU'], validAnalysisFields: validBackupFields, validSimulationState }), false);
 });

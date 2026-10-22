@@ -1019,7 +1019,10 @@ function renderSectorChart() {
 }
 const sectorTooltip=document.querySelector('#sectorTooltip'),
 sectorChart=document.querySelector('#sectorChart');
+let activeSectorTarget=null;
 function showSectorTooltip(target,event) {
+  if(activeSectorTarget&&activeSectorTarget!==target)activeSectorTarget.removeAttribute('aria-describedby');
+  activeSectorTarget=target;
   sectorTooltip.replaceChildren();
   const dot=document.createElement('i');
   dot.className='sector-tooltip-dot';
@@ -1043,13 +1046,13 @@ function showSectorTooltip(target,event) {
 }
 function hideSectorTooltip(target) {
   target?.removeAttribute('aria-describedby');
-  sectorTooltip.classList.add('hidden')
+  sectorTooltip.classList.add('hidden');activeSectorTarget=null
 }
 sectorChart.addEventListener('pointerover',e=> {
   const slice=e.target.closest('.sector-slice');if(slice)showSectorTooltip(slice,e)
 });
 sectorChart.addEventListener('pointerout',e=> {
-  const slice=e.target.closest('.sector-slice');if(slice&&!slice.contains(e.relatedTarget))hideSectorTooltip(slice)
+  const slice=e.target.closest('.sector-slice');if(slice&&e.pointerType!=='touch'&&slice!==document.activeElement&&!slice.contains(e.relatedTarget))hideSectorTooltip(slice)
 });
 sectorChart.addEventListener('focusin',e=> {
   const slice=e.target.closest('.sector-slice');if(slice)showSectorTooltip(slice)
@@ -1178,6 +1181,12 @@ document.querySelector('#form').addEventListener('click',e=> {
   if(!e.target.closest('#companyPicker')&&document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true')togglePicker(false)
 });
 document.addEventListener('keydown',e=> {
+  if(e.key==='Escape') {
+    const yieldButton=document.querySelector('[aria-describedby="yieldTooltip"]');
+    if(yieldButton){hideYieldTooltip(yieldButton);yieldButton.focus();return}
+    if(!sectorTooltip.classList.contains('hidden')){const target=activeSectorTarget;hideSectorTooltip(target);target?.focus();return}
+    if(document.activeElement.matches('.analysis-cards [data-help]'))document.activeElement.blur();
+  }
   const modalOpen=document.querySelector('#modalback').open,dialogOpen=document.querySelector('#settingsDialog').open||document.querySelector('#depositDialog').open,isShortcut=(e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k',isSearchShortcut=e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.target.closest('input,textarea,select,[contenteditable="true"]');
   if((isShortcut||isSearchShortcut)&&!modalOpen&&!dialogOpen) {
     e.preventDefault();openForm();togglePicker(true);return
@@ -1211,7 +1220,7 @@ document.querySelector('#rows').addEventListener('pointerover',e=> {
   const button=e.target.closest('.yield-warning');if(button)showYieldTooltip(button)
 });
 document.querySelector('#rows').addEventListener('pointerout',e=> {
-  const button=e.target.closest('.yield-warning');if(button&&!button.contains(e.relatedTarget))hideYieldTooltip(button)
+  const button=e.target.closest('.yield-warning');if(button&&e.pointerType!=='touch'&&button!==document.activeElement&&!button.contains(e.relatedTarget))hideYieldTooltip(button)
 });
 document.querySelector('#rows').addEventListener('focusin',e=> {
   const button=e.target.closest('.yield-warning');if(button)showYieldTooltip(button)
@@ -1240,7 +1249,8 @@ function setView(view) {
   if(stats){renderStats();renderAnalysis()}
 }
 const themeToggle=document.querySelector('#themeToggle');
-let darkMode=safeStorage.get('dividend-ike-theme')==='dark';
+const savedTheme=safeStorage.get('dividend-ike-theme');
+let darkMode=savedTheme==='dark'||savedTheme===null&&matchMedia('(prefers-color-scheme: dark)').matches;
 function setTheme(dark) {
   darkMode=dark;
   document.body.classList.toggle('dark-mode',dark);
@@ -1313,6 +1323,12 @@ document.querySelector('#quarterRows').addEventListener('change',event=>{
 document.querySelectorAll('.period-tab').forEach(button=>button.addEventListener('click',()=> {
   statsPeriod=button.dataset.period;renderStats()
 }));
+function setMarketStatus(status,state,message) {
+  const changed=state!=='loading'&&state!==status.dataset.announcedState;
+  status.setAttribute('aria-live',changed?'polite':'off');
+  status.textContent=message;
+  if(changed)status.dataset.announcedState=state
+}
 async function refreshPrices(showToast=false,allCompanies=false) {
   if(!allCompanies&&!portfolio.length)return;
   const button=document.querySelector('#refresh'),
@@ -1320,7 +1336,7 @@ async function refreshPrices(showToast=false,allCompanies=false) {
   button.disabled=true;
   status.classList.add('is-loading');
   button.textContent='Pobieram…';
-  if(!allCompanies)status.textContent='Pobieram kursy GPW…';
+  if(!allCompanies)setMarketStatus(status,'loading','Pobieram kursy GPW…');
   let updated=0,latestQuoteTime=0;
   try {
     const symbols=allCompanies?[]:portfolio.map(holding=>holding.ticker);
@@ -1343,14 +1359,14 @@ async function refreshPrices(showToast=false,allCompanies=false) {
     const savedQuoteTime=Math.max(0,...portfolio.map(holding=>Date.parse(priceTimes[holding.ticker])||0)),quoteTime=latestQuoteTime||savedQuoteTime;
     const quoteLabel=quoteTime?`Ostatnie notowanie ${new Date(quoteTime).toLocaleString('pl-PL',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}`:'Brak zapisanych kursów';
     if(data.updatedAt&&!allCompanies) {
-      if(staleQuote)status.textContent=Number.isFinite(Date.parse(staleQuote.asOf))?`Kursy sprzed ${Math.max(1,Math.floor((Date.now()-Date.parse(staleQuote.asOf))/60000))} min · źródło chwilowo niedostępne.`:'Ostatnie kursy są nieaktualne · źródło chwilowo niedostępne.';
-      else if(!marketOpen)status.textContent=`Rynek jest poza typowymi godzinami sesji. ${quoteLabel}.`;
-      else if(updated)status.textContent=`Kursy: Yahoo Finance · ${quoteLabel}. Dane mogą być opóźnione.`;
-      else status.textContent='Źródło nie zwróciło teraz kursów; spróbuję ponownie za minutę.';
+      if(staleQuote)setMarketStatus(status,'stale',Number.isFinite(Date.parse(staleQuote.asOf))?`Kursy sprzed ${Math.max(1,Math.floor((Date.now()-Date.parse(staleQuote.asOf))/60000))} min · źródło chwilowo niedostępne.`:'Ostatnie kursy są nieaktualne · źródło chwilowo niedostępne.');
+      else if(!marketOpen)setMarketStatus(status,'closed',`Rynek jest poza typowymi godzinami sesji. ${quoteLabel}.`);
+      else if(updated)setMarketStatus(status,'fresh',`Kursy: Yahoo Finance · ${quoteLabel}. Dane mogą być opóźnione.`);
+      else setMarketStatus(status,'unavailable','Źródło nie zwróciło teraz kursów; spróbuję ponownie za minutę.');
     } else throw Error()
   }
   catch {
-    status.textContent='Nie udało się pobrać kursów. Uruchom aplikację przez lokalny serwer (instrukcja w README).'
+    setMarketStatus(status,'error','Nie udało się pobrać kursów. Uruchom aplikację przez lokalny serwer (instrukcja w README).')
   }
   safeStorage.set('dividend-ike-prices',JSON.stringify(prices));
   safeStorage.set('dividend-ike-price-times',JSON.stringify(priceTimes));

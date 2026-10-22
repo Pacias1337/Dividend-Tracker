@@ -2376,7 +2376,7 @@ table:has(#rows) {font-variant-numeric:tabular-nums}
   .view-tabs {margin-top:-8px}
   .summary {gap:9px}
 }
-@media(max-width:600px) {
+@media(max-width:900px) {
   .tablewrap:has(#rows) {overflow:visible}
   table:has(#rows) {display:block;min-width:0}
   table:has(#rows) thead {display:none}
@@ -2386,9 +2386,13 @@ table:has(#rows) {font-variant-numeric:tabular-nums}
   table:has(#rows) tbody td:first-child,table:has(#rows) tbody td:last-child {grid-column:1/-1}
   table:has(#rows) tbody td:first-child {padding-bottom:10px;border-bottom:1px solid var(--hairline)}
   table:has(#rows) tbody td:not(:first-child):not(:last-child)::before {color:var(--text-3);font-size:11px;content:attr(data-label)}
+  table:has(#rows) tbody td[data-label="Dywidenda / akcję"] {grid-column:1/-1;display:block}
+  table:has(#rows) tbody td[data-label="Dywidenda / akcję"]::before {display:inline-block;margin-right:8px}
   table:has(#rows) tbody td:last-child {justify-content:flex-end;padding-top:5px}
   .company {gap:9px}
   .ticker {width:34px;height:34px}
+}
+@media(max-width:600px) {
   .modalback {display:flex;align-items:flex-end;padding:0;}
   .modalback .modal {position:relative;width:100%;max-width:none;max-height:calc(92dvh - env(safe-area-inset-bottom));padding:25px 20px max(20px,env(safe-area-inset-bottom));border-radius:22px 22px 0 0;border-bottom:0;}
   .modalback .modal::before {position:absolute;top:8px;left:calc(50% - 18px);width:36px;height:4px;border-radius:4px;background:var(--hairline);content:""}
@@ -2420,4 +2424,11 @@ table:has(#rows) {font-variant-numeric:tabular-nums}
 }
 @media(prefers-reduced-motion:reduce) {
   .status.is-loading::before {animation:none}
+}
+.analysis-cards [data-help]:hover::after,.analysis-cards [data-help]:focus::after {opacity:1;visibility:visible;transition-delay:0s}
+.add:active,.refresh:active,.secondary:active,.backup-button:active,.edit:active,.delete:active {transform:scale(.98)}
+.delete {color:var(--negative)}
+@supports not (backdrop-filter:blur(1px)) {
+  .top {background:var(--surface)}
+  .modalback::backdrop,.settings-dialog::backdrop {background:#06100bd9}
 }
