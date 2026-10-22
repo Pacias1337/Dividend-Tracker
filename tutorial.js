@@ -47,8 +47,12 @@
     const step = steps[index], target = document.querySelector(step.target);
     if (!visible(target)) { spotlight.style.display = 'none'; return; }
     const rect = target.getBoundingClientRect(), pad = 8;
-    spotlight.style.display = 'block'; spotlight.style.left = `${Math.max(4, rect.left - pad)}px`; spotlight.style.top = `${Math.max(4, rect.top - pad)}px`;
-    spotlight.style.width = `${Math.min(innerWidth - 8, rect.width + pad * 2)}px`; spotlight.style.height = `${Math.min(innerHeight - 8, rect.height + pad * 2)}px`;
+    const left = Math.max(4, Math.min(innerWidth - 12, rect.left - pad));
+    const top = Math.max(4, Math.min(innerHeight - 12, rect.top - pad));
+    const right = Math.min(innerWidth - 4, Math.max(left + 8, rect.right + pad));
+    const bottom = Math.min(innerHeight - 4, Math.max(top + 8, rect.bottom + pad));
+    spotlight.style.display = 'block'; spotlight.style.left = `${left}px`; spotlight.style.top = `${top}px`;
+    spotlight.style.width = `${right - left}px`; spotlight.style.height = `${bottom - top}px`;
   }
   function show() {
     if (index < 0 || index >= steps.length) return finish(true);

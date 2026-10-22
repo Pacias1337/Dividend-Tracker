@@ -869,10 +869,14 @@ function render() {
       <td class="num" data-label="Jednostki">${escapeHtml(holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6}))}</td>
       <td class="num" data-label="Kurs" title="${escapeHtml(priceTitle)}">${price?money(price):'—'}</td>
       <td class="num" data-label="Wartość">${price?money(holding.shares*price):'—'}</td>
-      <td class="num" data-label="Dywidenda / akcję">${dividendAmount}${dividendStatusMarkup(holding,c)}</td>
+      <td class="num" data-label="Dywidenda / akcję">${dividendAmount}</td>
       <td class="num" data-label="Rocznie">${money(income)}</td>
       <td class="yield" data-label="Stopa">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td>
       <td><button type="button" class="edit" aria-label="Edytuj pozycję ${escapeHtml(c.name)}" title="Edytuj" data-edit="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${escapeHtml(c.name)}" title="Usuń" data-delete="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
+    row.dataset.ticker=c.ticker;
+    row.tabIndex=0;
+    row.title='Kliknij, aby zobaczyć szczegóły pozycji';
+    row.setAttribute('aria-label',`${c.name}. Pokaż szczegóły pozycji.`);
     rows.append(row)
   }
   document.querySelector('#annual').textContent=money(totals.annual);
@@ -890,6 +894,26 @@ function recordActivity(action,ticker,shares,valueChange=null) {
   });
   portfolioActivity=portfolioActivity.slice(0,500);
   safeStorage.set('dividend-ike-activity',JSON.stringify(portfolioActivity))
+}
+let positionTicker=null;
+const positionDialog=document.querySelector('#positionDialog');
+function openPositionDetails(ticker) {
+  const company=getCompany(ticker),holding=portfolio.find(item=>item.ticker===ticker);
+  if(!company||!holding)return;
+  positionTicker=ticker;
+  if(!Array.isArray(holding.purchases))holding.purchases=[];
+  document.querySelector('#positionDialogTitle').textContent=company.name;
+  document.querySelector('#positionDialogSubtitle').textContent=`${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek · ${company.sector}`;
+  document.querySelector('#positionDividend').innerHTML=`<h3>Informacje o dywidendzie</h3><div class="position-dividend-value">${holding.dividend!=null?money(holding.dividend):money(company.dividend)} na jednostkę</div>${dividendStatusMarkup(holding,company)}`;
+  document.querySelector('#positionPurchaseList').innerHTML=holding.purchases.length?holding.purchases.map(purchase=>`<li><span>${escapeHtml(new Date(`${purchase.date}T12:00:00`).toLocaleDateString('pl-PL'))} · ${escapeHtml(Number(purchase.shares).toLocaleString('pl-PL',{maximumFractionDigits:6}))} × ${money(purchase.price)}</span><strong>${money(purchase.shares*purchase.price)}</strong></li>`).join(''):'<li class="purchase-empty">Nie dodano jeszcze zakupów. To pole jest opcjonalne.</li>';
+  document.querySelector('#purchaseForm').reset();
+  const today=new Date();document.querySelector('#purchaseDate').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  updatePurchaseTotal();
+  positionDialog.showModal();
+}
+function updatePurchaseTotal() {
+  const shares=AppCore.parseDecimal(document.querySelector('#purchaseShares').value),price=AppCore.parseDecimal(document.querySelector('#purchasePrice').value);
+  document.querySelector('#purchaseTotal').textContent=Number.isFinite(shares)&&shares>0&&Number.isFinite(price)&&price>0?`Łączny koszt: ${money(shares*price)}`:'Łączny koszt: —';
 }
 function saveHistorySnapshot(allowEmpty=false) {
   const active=portfolio.filter(h=>h.shares>0);
@@ -920,6 +944,11 @@ function renderStats() {
   document.querySelector('#statsDividend').textContent=money(annualIncome);
   document.querySelector('#statsYield').textContent=complete&&currentValue?`${(annualIncome/currentValue*100).toFixed(2).replace('.',',')}%`: '—';
   document.querySelector('#statsDividendNote').textContent='Aktualny szacunek z ostatnich znanych wypłat';
+  const purchases=portfolio.flatMap(h=>(Array.isArray(h.purchases)?h.purchases:[]).map(p=>({ticker:h.ticker,p}))).filter(({p})=>Number.isFinite(p.shares)&&p.shares>0&&Number.isFinite(p.price)&&p.price>0),purchaseCost=purchases.reduce((sum,{p})=>sum+p.shares*p.price,0),pricedPurchases=purchases.filter(({ticker})=>Number.isFinite(prices[ticker])&&prices[ticker]>0),purchaseProfit=pricedPurchases.length?pricedPurchases.reduce((sum,{ticker,p})=>sum+p.shares*(prices[ticker]-p.price),0):null;
+  document.querySelector('#statsPurchaseProfit').textContent=purchaseProfit===null?'—':`${purchaseProfit>0?'+':''}${money(purchaseProfit)}`;
+  document.querySelector('#statsPurchaseProfit').classList.toggle('negative',purchaseProfit<0);
+  document.querySelector('#statsPurchaseProfit').classList.toggle('positive',purchaseProfit>0);
+  document.querySelector('#statsPurchaseProfitNote').textContent=purchases.length?`${pricedPurchases.length===purchases.length?`${purchases.length} zapisane zakupy`:`Kurs dla ${pricedPurchases.length}/${purchases.length} zapisów`} · koszt ${money(purchaseCost)}`:'Dodaj zakupy w szczegółach pozycji';
   const days= {
     week: 7,
     month: 30,
@@ -1230,7 +1259,7 @@ document.querySelector('#rows').addEventListener('focusout',e=> {
   const button=e.target.closest('.yield-warning');if(button)hideYieldTooltip(button)
 });
 document.querySelector('#rows').addEventListener('click', (event) =>  {
-  const button = event.target.closest('[data-edit], [data-delete]'); if (!button) return; const ticker = button.dataset.edit || button.dataset.delete; if (button.dataset.edit)  {
+  const button = event.target.closest('[data-edit], [data-delete]'); if (!button) { const row=event.target.closest('tr[data-ticker]');if(row&&!event.target.closest('a,button'))openPositionDetails(row.dataset.ticker);return } const ticker = button.dataset.edit || button.dataset.delete; if (button.dataset.edit)  {
     openForm(ticker); return;
   }
   confirmAction('Usunąć pozycję?', `Pozycja ${getCompany(ticker)?.name||ticker} zostanie usunięta z portfela.`, 'Usuń pozycję', true).then(confirmed=>{
@@ -1239,17 +1268,48 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
     recordActivity('Usunięto pozycję',ticker,holding?.shares||0,valueChange);portfolio=portfolio.filter(item=>item.ticker!==ticker);saveHistorySnapshot(true);render();document.querySelector('#add').focus();
   });
 });
+document.querySelector('#rows').addEventListener('keydown',event=>{const row=event.target.closest('tr[data-ticker]');if(row&&(event.key==='Enter'||event.key===' ')&&!event.target.closest('button')){event.preventDefault();openPositionDetails(row.dataset.ticker)}});
+document.querySelector('#closePositionDialog').addEventListener('click',()=>positionDialog.close());
+positionDialog.addEventListener('click',event=>{if(event.target===positionDialog)positionDialog.close()});
+document.querySelectorAll('#purchaseShares,#purchasePrice').forEach(input=>input.addEventListener('input',updatePurchaseTotal));
+document.querySelector('#purchaseForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const shares=AppCore.parseDecimal(document.querySelector('#purchaseShares').value),price=AppCore.parseDecimal(document.querySelector('#purchasePrice').value),date=document.querySelector('#purchaseDate').value;
+  if(!positionTicker||!date||!Number.isFinite(Date.parse(`${date}T00:00:00`))||!Number.isFinite(shares)||shares<=0||!Number.isFinite(price)||price<=0){toast('Wpisz prawidłową datę, liczbę jednostek i cenę.');return}
+  const holding=portfolio.find(item=>item.ticker===positionTicker);if(!holding)return;
+  if(!Array.isArray(holding.purchases))holding.purchases=[];
+  holding.purchases.push({date,shares,price:roundMoney(price)});
+  holding.purchases.sort((a,b)=>a.date.localeCompare(b.date));
+  safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
+  recordActivity('Dodano zakup',positionTicker,shares,Number.isFinite(prices[positionTicker])?shares*(prices[positionTicker]-price):null);
+  saveHistorySnapshot(true);render();openPositionDetails(positionTicker);toast('Zakup zapisany');
+});
 function setView(view) {
   if(view==='analysis')view='stats';
   const views=['portfolio','stats','simulation'];
-  document.querySelector('#portfolioView').classList.toggle('hidden',view!=='portfolio');
-  document.querySelector('#statsView').classList.toggle('hidden',view!=='stats');
-  document.querySelector('#simulationView').classList.toggle('hidden',view!=='simulation');
+  views.forEach(name=>{const panel=document.querySelector(`#${name}View`);if(!panel)return;panel.classList.toggle('hidden',name!==view);if(name===view){panel.classList.remove('view-panel-enter');void panel.offsetWidth;panel.classList.add('view-panel-enter')}});
   views.forEach(name=>{
     const tab=document.querySelector(`#${name}Tab`);
     if(tab){tab.setAttribute('aria-selected',String(name===view));tab.tabIndex=name===view?0:-1}
   });
-  if(view==='stats'){renderStats();renderAnalysis()}
+  if(view==='stats'){renderStats();renderAnalysis();updateStatsNav()}
+  updateNavigationDock()
+}
+const statsNav=document.querySelector('#statsNav'),statsPanels=[
+  ['statsOverview',document.querySelector('#statsView > .stats-cards')],
+  ['statsValueHistory',document.querySelector('#statsView > .panel')],
+  ['statsActivity',document.querySelector('#activityTitle').closest('.panel')],
+  ...[...document.querySelectorAll('#analysisView .analysis-panel')].map((panel,index)=>[['statsDeposits','statsQuarters','statsInvestments','statsReturns'][index],panel])
+].filter(([,element])=>element);
+statsPanels.forEach(([id,element])=>{element.id=id;element.style.scrollMarginTop='164px'});
+function updateStatsNav() {
+  if(document.querySelector('#statsView').classList.contains('hidden')){updateNavigationDock();return}
+  let active=statsPanels[0]?.[0];
+  const threshold=Math.min(280,Math.max(190,innerHeight*.3));
+  for(const [id,element] of statsPanels){if(element.getBoundingClientRect().top<=threshold)active=id;else break}
+  if(scrollY+innerHeight>=document.documentElement.scrollHeight-24)active=statsPanels.at(-1)?.[0]??active;
+  statsNav.querySelectorAll('a').forEach(link=>{if(link.hash===`#${active}`)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')});
+  updateNavigationDock()
 }
 const themeToggle=document.querySelector('#themeToggle');
 const savedTheme=safeStorage.get('dividend-ike-theme');
@@ -1276,7 +1336,46 @@ document.querySelector('.period-tabs').addEventListener('keydown',event=>{
   event.preventDefault();const tabs=[...document.querySelectorAll('.period-tab')],index=tabs.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
   tabs[next].focus();tabs[next].click()
 });
-window.addEventListener('scroll',()=>document.body.classList.toggle('scrolled',window.scrollY>24),{passive:true});
+const viewNavigation=document.querySelector('.view-navigation'),viewTabs=document.querySelector('.view-tabs');
+const navigationDock=document.createElement('div');navigationDock.className='navigation-dock';navigationDock.setAttribute('aria-label','Nawigacja');
+const viewTabsClone=viewTabs.cloneNode(true),statsNavClone=statsNav.cloneNode(true);
+viewTabsClone.removeAttribute('id');statsNavClone.removeAttribute('id');
+for(const clone of [viewTabsClone,statsNavClone])clone.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));
+navigationDock.append(viewTabsClone,statsNavClone);document.body.append(navigationDock);
+function syncNavigationClone(source,clone) {
+  const width=source.getBoundingClientRect().width;if(width)clone.style.width=`${width}px`;
+  const originals=source.querySelectorAll('button,a'),copies=clone.querySelectorAll('button,a');
+  originals.forEach((element,index)=>{const copy=copies[index];if(!copy)return;for(const attribute of ['aria-selected','aria-current','tabindex']){if(element.hasAttribute(attribute))copy.setAttribute(attribute,element.getAttribute(attribute));else copy.removeAttribute(attribute)}})
+}
+function isInViewport(element) {
+  if(!element.getClientRects().length)return false;
+  const rect=element.getBoundingClientRect(),headerBottom=document.body.classList.contains('nav-floating')?0:Math.max(0,document.querySelector('.top').getBoundingClientRect().bottom);
+  return rect.bottom>headerBottom&&rect.top<innerHeight
+}
+function updateNavigationDock() {
+  syncNavigationClone(viewTabs,viewTabsClone);syncNavigationClone(statsNav,statsNavClone);
+  const showViews=!isInViewport(viewNavigation),showStats=!document.querySelector('#statsView').classList.contains('hidden')&&!isInViewport(statsNav);
+  navigationDock.classList.toggle('show-stats',showStats);navigationDock.classList.toggle('is-visible',showViews||showStats)
+}
+viewTabsClone.addEventListener('click',event=>{const button=event.target.closest('.view-tab');if(!button)return;event.preventDefault();const index=[...viewTabsClone.querySelectorAll('.view-tab')].indexOf(button);viewTabs.querySelectorAll('.view-tab')[index]?.click()});
+viewTabsClone.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=[...viewTabsClone.querySelectorAll('.view-tab')],index=tabs.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next].focus();tabs[next].click()});
+statsNavClone.addEventListener('click',event=>{const link=event.target.closest('a[href^="#"]');if(!link)return;const original=[...statsNav.querySelectorAll('a')].find(item=>item.hash===link.hash);if(original){event.preventDefault();original.click()}});
+const backToTop=document.createElement('button');
+backToTop.id='backToTop';backToTop.type='button';backToTop.setAttribute('aria-label','Wróć na górę strony');backToTop.title='Wróć na górę';
+backToTop.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+document.body.append(backToTop);
+backToTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}));
+function updateScrollNavigation() {
+  const scrolled=window.scrollY>24;
+  document.body.classList.toggle('scrolled',scrolled);
+  document.body.classList.toggle('nav-floating',window.scrollY>120);
+  const showBackToTop=window.scrollY>360;
+  backToTop.classList.toggle('is-visible',showBackToTop);backToTop.tabIndex=showBackToTop?0:-1;backToTop.setAttribute('aria-hidden',String(!showBackToTop));
+  updateStatsNav();updateNavigationDock();
+}
+window.addEventListener('scroll',updateScrollNavigation,{passive:true});
+window.addEventListener('resize',updateScrollNavigation,{passive:true});
+updateScrollNavigation();
 document.querySelector('#startTour').setAttribute('aria-keyshortcuts','F1');
 document.querySelector('#startTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
 document.addEventListener('keydown',event=>{
@@ -1420,7 +1519,7 @@ document.querySelector('#importBackup').addEventListener('click',()=> {
   settingsDialog.close();document.querySelector('#backupFile').click()
 });
 document.querySelector('#resetApp').addEventListener('click',async()=>{
-  if(!await confirmAction('Zresetować dane?', 'Zostaną usunięte portfel, notowania, historia, dziennik i ustawienia zapisane w tej przeglądarce.', 'Usuń dane', true))return;
+  if(!await confirmAction('Zresetować dane?', 'Zostaną usunięte oba portfele, notowania, historia, dziennik i ustawienia zapisane w tej przeglądarce.', 'Usuń dane', true))return;
   const removed=['dividend-ike-portfolio','dividend-ike-prices','dividend-ike-price-times','dividend-ike-history','dividend-ike-history-started','dividend-ike-activity','dividend-ike-theme','dividend-ike-deposits','dividend-ike-inflation','dividend-ike-deposit-rate','dividend-ike-simulation','dividend-ike-tour',backupDateStorageKey].map(key=>safeStorage.remove(key));
   if(removed.includes(false)){toast('Nie udało się usunąć wszystkich danych z tej przeglądarki.');return}
   location.reload();
