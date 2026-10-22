@@ -84,8 +84,9 @@ button:focus-visible,input:focus-visible,select:focus-visible  {
   display:flex;
   align-items:center;
   justify-content:center;
-  width:36px;
-  height:36px;
+  flex:0 0 40px;
+  width:40px;
+  height:40px;
   padding:0;
   border:1px solid #d6dfd9;
   border-radius:11px;
@@ -93,17 +94,13 @@ button:focus-visible,input:focus-visible,select:focus-visible  {
   color:#496356
 }
 .settings-toggle span  {
-  display:block;
-  line-height:1;
-  transform:translateY(-1px)
+  display:grid;
+  place-items:center;
+  line-height:1
 }
 .settings-toggle:hover  {
   background:#f3f8f4;
   color:#1b6746
-}
-.settings-toggle  {
-  font-size:21px;
-  line-height:1
 }
 .dark-mode .settings-toggle  {
   background:#202e26;
@@ -1360,6 +1357,9 @@ body.dark-mode  {
 .analysis-tablewrap  {
   overflow-x:auto
 }
+.table-disclosure { border-top:1px solid var(--line) }
+.table-disclosure summary { padding:12px 20px; color:var(--green); font-size:12px; font-weight:650; cursor:pointer }
+.table-disclosure[open] summary { border-bottom:1px solid var(--line) }
 .analysis-tablewrap table  {
   min-width:900px
 }
@@ -1476,7 +1476,8 @@ body.dark-mode  {
 .sim-fields label,.wizard label,.withdrawal-input label { display:grid; gap:6px; min-width:0; color:var(--dark); font-size:12px; font-weight:600 }
 .sim-fields input,.wizard input,.withdrawal-input input { width:100%; min-width:0; height:42px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:var(--white); color:var(--dark); font:inherit }
 .sim-fields input:focus,.wizard input:focus,.withdrawal-input input:focus { outline:2px solid #168256; outline-offset:1px }
-.limit-field { max-width:360px; grid-template-columns:minmax(0,1fr) }
+.limit-field { width:min(100%,560px); margin:16px auto; grid-template-columns:minmax(0,1fr) }
+.limit-field label { width:100% }
 .wizard,.existing-form { margin:18px 0; padding:20px; border:1px solid var(--line); border-radius:14px; background:var(--white) }
 .wizard h3,.existing-form h3,.simulation-results h3,.withdrawal-panel h3 { margin:0 0 10px; color:var(--dark); font-size:18px }
 .wizard p,.existing-form p { max-width:70ch; color:var(--muted); font-size:13px; line-height:1.6 }
@@ -1515,6 +1516,8 @@ body.dark-mode  {
 .glossary dl { display:grid; grid-template-columns:minmax(130px,.35fr) 1fr; gap:7px 14px; margin:14px 0 0; font-size:12px; line-height:1.5 }
 .glossary dt { font-weight:700 }.glossary dd { margin:0; color:var(--muted) }
 .tour-toggle { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:6px 10px; font-size:12px }
+.dark-mode .tour-toggle { background:#202e26; color:#e7eee9; border-color:#405247 }
+.dark-mode .tour-toggle:hover { background:#2a3a31; color:#fff }
 .tour-overlay { position:fixed; inset:0; z-index:9998; pointer-events:none }
 .tour-overlay:not(.is-open) { display:none }
 .tour-overlay.has-no-spotlight { background:rgba(12,25,18,.58) }

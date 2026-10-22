@@ -692,8 +692,8 @@ function renderAnalysis() {
   renderAnalysisChart('investmentChart','investmentChartEmpty',result.rows,[{className:'analysis-line-balance',values:result.rows.map(row=>row.balance),label:'Stan konta'},{className:'analysis-line-deposits',values:result.rows.map(row=>row.cumulativeDeposits),label:'Suma wpłat'}],false);
   renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'}],true);
 }
-let wizardStep=simulationState.plan.monthlyDeposit!==null?(simulationState.plan.years!==null?(simulationState.plan.annualReturnPct!==null?5:3):2):0,statsOpened=false;
-const simFieldMap={planMonthly:['plan','monthlyDeposit'],planYears:['plan','years'],planReturn:['plan','annualReturnPct'],planBirthYear:['plan','birthYear'],planFirstYear:['plan','firstDepositYear'],planInflation:['plan','annualInflationPct'],existingMonthly:['plan','monthlyDeposit'],existingYears:['plan','years'],existingReturn:['plan','annualReturnPct'],existingBirthYear:['plan','birthYear'],existingFirstYear:['plan','firstDepositYear'],existingInflation:['plan','annualInflationPct'],existingValue:['existing','value'],existingDeposits:['existing','deposits'],existingProfit:['existing','profit']};
+let wizardStep=simulationState.plan.monthlyDeposit!==null?(simulationState.plan.years!==null?(simulationState.plan.annualReturnPct!==null?4:3):2):0,statsOpened=false;
+const simFieldMap={planMonthly:['plan','monthlyDeposit'],planYears:['plan','years'],planReturn:['plan','annualReturnPct'],existingMonthly:['plan','monthlyDeposit'],existingYears:['plan','years'],existingReturn:['plan','annualReturnPct'],existingValue:['existing','value'],existingDeposits:['existing','deposits'],existingProfit:['existing','profit']};
 function setInputValue(id,value) { document.querySelector(`#${id}`).value=value===null||value===undefined?'':String(value) }
 function saveSimulationInput(event) {
   const input=event.target,number=input.value===''?null:input.valueAsNumber;
@@ -708,10 +708,10 @@ function syncSimulationInputs() {
 }
 function renderWizard() {
   document.querySelectorAll('[data-wizard-step]').forEach(step=>step.classList.toggle('hidden',Number(step.dataset.wizardStep)!==wizardStep));
-  document.querySelector('#wizardCount').textContent=`Krok ${wizardStep+1} z 6`;
-  document.querySelector('#wizardProgress').style.width=`${(wizardStep+1)/6*100}%`;
+  document.querySelector('#wizardCount').textContent=`Krok ${wizardStep+1} z 5`;
+  document.querySelector('#wizardProgress').style.width=`${(wizardStep+1)/5*100}%`;
   document.querySelector('#wizardBack').disabled=wizardStep===0;
-  document.querySelector('#wizardNext').textContent=wizardStep===5?'Zobacz wynik':'Dalej';
+  document.querySelector('#wizardNext').textContent=wizardStep===4?'Zobacz wynik':'Dalej';
 }
 function renderStarter() {
   const enabled=simulationState.enabled,mode=simulationState.mode;
@@ -740,20 +740,17 @@ function getSimulationStart() {
   resolved.textContent=result.valid?`Wyliczone wartości: ${money(result.value)} wartości IKE, ${money(result.deposits)} wpłat, ${money(result.profit)} zysku / straty.`:'';
   return result.valid?{value:result.value,deposits:result.deposits}:null;
 }
-function simulationDisplay(value,years=0) {
-  const inflation=simulationState.plan.annualInflationPct;
-  return money(document.querySelector('#showRealValue').checked&&inflation!==null?IkeSimulation.realValue(value,years,inflation):value);
-}
+function simulationDisplay(value) { return money(value) }
 function renderSimulationChart(scenarios,years) {
   const svg=document.querySelector('#simulationChart'),left=100,right=740,top=22,bottom=220;
   svg.replaceChildren();
   const series=[{scenario:scenarios[0],color:'#7d8990',key:'niższy'},{scenario:scenarios[1],color:'#168256',key:'bazowy'},{scenario:scenarios[2],color:'#66a98a',key:'wyższy'}];
-  const adjust=(row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.value,index+1,simulationState.plan.annualInflationPct):row.value;
-  const all=series.flatMap(item=>item.scenario.rows.map((row,index)=>adjust(row,index))).concat(scenarios[1].rows.map((row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.deposits,index+1,simulationState.plan.annualInflationPct):row.deposits));
+  const adjust=row=>row.value;
+  const all=series.flatMap(item=>item.scenario.rows.map(adjust)).concat(scenarios[1].rows.map(row=>row.deposits));
   let low=Math.min(0,...all),high=Math.max(1,...all);if(low===high)high=low+1;const pad=(high-low)*.1;low=Math.max(0,low-pad);high+=pad;
   const x=index=>left+(right-left)*index/Math.max(1,years-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),ns='http://www.w3.org/2000/svg';
   for(let i=0;i<3;i++){const value=high-(high-low)*i/2,yy=top+(bottom-top)*i/2,line=document.createElementNS(ns,'line'),label=document.createElementNS(ns,'text');line.setAttribute('class','history-grid');line.setAttribute('x1',left);line.setAttribute('x2',right);line.setAttribute('y1',yy);line.setAttribute('y2',yy);label.setAttribute('class','history-label');label.setAttribute('x','0');label.setAttribute('y',yy+4);label.textContent=money(value);svg.append(line,label)}
-  const deposits=scenarios[1].rows.map((row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.deposits,index+1,simulationState.plan.annualInflationPct):row.deposits);
+  const deposits=scenarios[1].rows.map(row=>row.deposits);
   for(const item of [...series,{scenario:{rows:scenarios[1].rows},color:'#7d8990',key:'wpłaty',values:deposits}]){
     const values=item.values||item.scenario.rows.map((row,index)=>adjust(row,index)),polyline=document.createElementNS(ns,'polyline');polyline.setAttribute('fill','none');polyline.setAttribute('stroke',item.color);polyline.setAttribute('stroke-width','3');polyline.setAttribute('points',values.map((value,index)=>`${x(index)},${y(value)}`).join(' '));svg.append(polyline);
     values.forEach((value,index)=>{const circle=document.createElementNS(ns,'circle'),title=document.createElementNS(ns,'title');circle.setAttribute('cx',x(index));circle.setAttribute('cy',y(value));circle.setAttribute('r','4');circle.setAttribute('fill',item.color);circle.setAttribute('class','simulation-point');title.textContent=`${scenarios[1].rows[index].year}: ${item.key} · ${money(value)}`;circle.append(title);svg.append(circle)});
@@ -763,7 +760,7 @@ function renderSimulationChart(scenarios,years) {
 function renderSimulation() {
   const results=document.querySelector('#simulationResults');
   if(!simulationState.enabled||!simulationState.mode){results.classList.add('hidden');return}
-  if(simulationState.mode==='new'&&wizardStep<5){results.classList.add('hidden');return}
+  if(simulationState.mode==='new'&&wizardStep<4){results.classList.add('hidden');return}
   const start=getSimulationStart(),plan=simulationState.plan;
   const planValid=Number.isFinite(plan.monthlyDeposit)&&plan.monthlyDeposit>=0&&Number.isFinite(plan.annualReturnPct)&&plan.annualReturnPct>=-100&&plan.annualReturnPct<=100&&Number.isInteger(plan.years)&&plan.years>=1&&plan.years<=80&&Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0;
   const planError=document.querySelector('#existingPlanError'),limitError=document.querySelector('#limitError');
@@ -773,17 +770,15 @@ function renderSimulation() {
   const input={startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1};
   const scenarios=IkeSimulation.projectScenarios(input);if(scenarios.some(item=>!item.valid)){results.classList.add('hidden');return}
   results.classList.remove('hidden');
-  const base=scenarios[1].rows,last=base.at(-1),isReal=document.querySelector('#showRealValue').checked;
+  const base=scenarios[1].rows,last=base.at(-1);
   document.querySelector('#simEndValue').textContent=simulationDisplay(last.value,plan.years);
   document.querySelector('#simDeposits').textContent=simulationDisplay(last.deposits,plan.years);
   document.querySelector('#simProfit').textContent=simulationDisplay(last.profit,plan.years);
   const overLimit=scenarios.some(item=>item.rows.some(row=>row.limitExceeded));document.querySelector('#limitWarning').classList.toggle('hidden',!overLimit||simulationState.capToLimit);
-  const realToggle=document.querySelector('#showRealValue');realToggle.disabled=plan.annualInflationPct===null;if(realToggle.disabled)realToggle.checked=false;
   const rows=document.querySelector('#simulationRows');rows.replaceChildren();
   for(const [index,row] of base.entries()) {const tr=document.createElement('tr');[row.year,money(row.yearlyDeposit),simulationDisplay(row.deposits,index+1),simulationDisplay(row.value,index+1),simulationDisplay(row.profit,index+1),money(row.tax),money(row.net)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});rows.append(tr)}
   renderSimulationChart(scenarios,plan.years);
-  const conditions=IkeSimulation.ikeConditions({birthYear:plan.birthYear,firstDepositYear:plan.firstDepositYear,currentYear:new Date().getFullYear()}),atEnd=IkeSimulation.ikeConditions({birthYear:plan.birthYear,firstDepositYear:plan.firstDepositYear,currentYear:last.year}),eligibleNow=conditions.ageMet===true&&conditions.yearsMet===true;
-  document.querySelector('#conditionsStatus').textContent=conditions.ageMet===null||conditions.yearsMet===null?'Uzupełnij rok urodzenia i rok pierwszej wpłaty, aby sprawdzić uproszczone warunki IKE.':`Dziś: wiek ${conditions.ageMet?'spełniony':'niespełniony'}, lata wpłat ${conditions.yearsMet?'spełnione':'niespełnione'}. W roku ${last.year}: wiek ${atEnd.ageMet?'spełniony':'niespełniony'}, lata wpłat ${atEnd.yearsMet?'spełnione':'niespełnione'}; uproszczone warunki łącznie od ${conditions.eligibleYear} r.`;
+  document.querySelector('#conditionsStatus').textContent='Porównanie pokazuje uproszczone warianty wypłaty przed i po spełnieniu warunków IKE.';
   const amount=simulationState.withdrawalAmount,withdrawalError=document.querySelector('#withdrawalError');
   document.querySelector('#withdrawalAmount').max=String(last.value);
   if(amount===null){withdrawalError.classList.add('hidden');document.querySelector('#withdrawNow').replaceChildren();document.querySelector('#withdrawLater').replaceChildren();document.querySelector('#taxDifference').textContent='';return}
@@ -791,9 +786,9 @@ function renderSimulation() {
   withdrawalError.classList.add('hidden');
   const later={...now,tax:0,net:amount};
   const renderDetails=(id,result)=>{const list=document.querySelector(`#${id}`);list.replaceChildren();const values=[['Podatek',money(result.tax)],['Kwota netto',money(result.net)],['Część kapitałowa',money(result.capital)],['Część zyskowa',money(result.gain)],['Stan po wypłacie',money(result.remainingValue)]];for(const [label,value] of values){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;list.append(dt,dd)}};
-  renderDetails('withdrawNow',eligibleNow?later:now);renderDetails('withdrawLater',later);
-  document.querySelector('#taxDifference').textContent=`Różnica: ${money(eligibleNow?0:now.tax)} podatku mniej po spełnieniu warunków.`;
-  if(isReal)document.querySelector('#simulationTitle').textContent='Wynik symulacji · wartości w dzisiejszych złotówkach';else document.querySelector('#simulationTitle').textContent='Wynik symulacji';
+  renderDetails('withdrawNow',now);renderDetails('withdrawLater',later);
+  document.querySelector('#taxDifference').textContent=`Różnica: ${money(now.tax)} podatku mniej po spełnieniu warunków.`;
+  document.querySelector('#simulationTitle').textContent='Wynik symulacji';
 }
 function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   const svg=document.querySelector(`#${svgId}`),empty=document.querySelector(`#${emptyId}`),values=series.flatMap(item=>item.values.filter(Number.isFinite));
@@ -1312,10 +1307,9 @@ document.querySelector('#wizardNext').addEventListener('click',()=>{
   if(required&&simulationState.plan[required[0]]===null){toast(required[1]);document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
   const plan=simulationState.plan;
   if(wizardStep===1&&plan.monthlyDeposit<0||wizardStep===2&&(!Number.isInteger(plan.years)||plan.years<1||plan.years>80)||wizardStep===3&&(!Number.isFinite(plan.annualReturnPct)||plan.annualReturnPct< -100||plan.annualReturnPct>100)){toast('Sprawdź wartość w tym kroku i spróbuj ponownie.');document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
-  wizardStep=Math.min(5,wizardStep+1);renderWizard();renderSimulation();
+  wizardStep=Math.min(4,wizardStep+1);renderWizard();renderSimulation();
 });
 document.querySelector('#starterContent').addEventListener('input',saveSimulationInput);
-document.querySelector('#showRealValue').addEventListener('change',renderSimulation);
 document.querySelector('#capContributions').addEventListener('click',()=>{simulationState.capToLimit=true;saveSimulationState();renderSimulation()});
 document.querySelector('#withdrawAll').addEventListener('click',()=>{const start=getSimulationStart(),plan=simulationState.plan;if(!start||!Number.isFinite(plan.monthlyDeposit)||!Number.isFinite(plan.annualReturnPct)||!Number.isInteger(plan.years))return;const result=IkeSimulation.projectGrowth({startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1});if(result.valid){simulationState.withdrawalAmount=result.rows.at(-1).value;setInputValue('withdrawalAmount',simulationState.withdrawalAmount);saveSimulationState();renderSimulation()}});
 document.querySelector('#saveStartEntry').addEventListener('click',()=>{
