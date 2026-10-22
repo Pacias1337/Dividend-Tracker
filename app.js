@@ -756,7 +756,7 @@ async function refreshInflation() {
     if(!response.ok)throw Error('Inflation data unavailable');
     monthlyInflation=(await response.json()).inflation||{};
     document.querySelector('#inflationUnavailable').classList.toggle('hidden',Object.keys(monthlyInflation).length>0);
-    if(!document.querySelector('#analysisView').classList.contains('hidden'))renderAnalysis();
+  if(!document.querySelector('#journalView').classList.contains('hidden'))renderAnalysis();
   } catch {
     document.querySelector('#inflationUnavailable').classList.remove('hidden');
   }
@@ -895,25 +895,14 @@ function recordActivity(action,ticker,shares,valueChange=null) {
   portfolioActivity=portfolioActivity.slice(0,500);
   safeStorage.set('dividend-ike-activity',JSON.stringify(portfolioActivity))
 }
-let positionTicker=null;
 const positionDialog=document.querySelector('#positionDialog');
 function openPositionDetails(ticker) {
   const company=getCompany(ticker),holding=portfolio.find(item=>item.ticker===ticker);
   if(!company||!holding)return;
-  positionTicker=ticker;
-  if(!Array.isArray(holding.purchases))holding.purchases=[];
   document.querySelector('#positionDialogTitle').textContent=company.name;
   document.querySelector('#positionDialogSubtitle').textContent=`${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek · ${company.sector}`;
   document.querySelector('#positionDividend').innerHTML=`<h3>Informacje o dywidendzie</h3><div class="position-dividend-value">${holding.dividend!=null?money(holding.dividend):money(company.dividend)} na jednostkę</div>${dividendStatusMarkup(holding,company)}`;
-  document.querySelector('#positionPurchaseList').innerHTML=holding.purchases.length?holding.purchases.map(purchase=>`<li><span>${escapeHtml(new Date(`${purchase.date}T12:00:00`).toLocaleDateString('pl-PL'))} · ${escapeHtml(Number(purchase.shares).toLocaleString('pl-PL',{maximumFractionDigits:6}))} × ${money(purchase.price)}</span><strong>${money(purchase.shares*purchase.price)}</strong></li>`).join(''):'<li class="purchase-empty">Nie dodano jeszcze zakupów. To pole jest opcjonalne.</li>';
-  document.querySelector('#purchaseForm').reset();
-  const today=new Date();document.querySelector('#purchaseDate').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  updatePurchaseTotal();
   positionDialog.showModal();
-}
-function updatePurchaseTotal() {
-  const shares=AppCore.parseDecimal(document.querySelector('#purchaseShares').value),price=AppCore.parseDecimal(document.querySelector('#purchasePrice').value);
-  document.querySelector('#purchaseTotal').textContent=Number.isFinite(shares)&&shares>0&&Number.isFinite(price)&&price>0?`Łączny koszt: ${money(shares*price)}`:'Łączny koszt: —';
 }
 function saveHistorySnapshot(allowEmpty=false) {
   const active=portfolio.filter(h=>h.shares>0);
@@ -944,11 +933,6 @@ function renderStats() {
   document.querySelector('#statsDividend').textContent=money(annualIncome);
   document.querySelector('#statsYield').textContent=complete&&currentValue?`${(annualIncome/currentValue*100).toFixed(2).replace('.',',')}%`: '—';
   document.querySelector('#statsDividendNote').textContent='Aktualny szacunek z ostatnich znanych wypłat';
-  const purchases=portfolio.flatMap(h=>(Array.isArray(h.purchases)?h.purchases:[]).map(p=>({ticker:h.ticker,p}))).filter(({p})=>Number.isFinite(p.shares)&&p.shares>0&&Number.isFinite(p.price)&&p.price>0),purchaseCost=purchases.reduce((sum,{p})=>sum+p.shares*p.price,0),pricedPurchases=purchases.filter(({ticker})=>Number.isFinite(prices[ticker])&&prices[ticker]>0),purchaseProfit=pricedPurchases.length?pricedPurchases.reduce((sum,{ticker,p})=>sum+p.shares*(prices[ticker]-p.price),0):null;
-  document.querySelector('#statsPurchaseProfit').textContent=purchaseProfit===null?'—':`${purchaseProfit>0?'+':''}${money(purchaseProfit)}`;
-  document.querySelector('#statsPurchaseProfit').classList.toggle('negative',purchaseProfit<0);
-  document.querySelector('#statsPurchaseProfit').classList.toggle('positive',purchaseProfit>0);
-  document.querySelector('#statsPurchaseProfitNote').textContent=purchases.length?`${pricedPurchases.length===purchases.length?`${purchases.length} zapisane zakupy`:`Kurs dla ${pricedPurchases.length}/${purchases.length} zapisów`} · koszt ${money(purchaseCost)}`:'Dodaj zakupy w szczegółach pozycji';
   const days= {
     week: 7,
     month: 30,
@@ -1271,35 +1255,24 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
 document.querySelector('#rows').addEventListener('keydown',event=>{const row=event.target.closest('tr[data-ticker]');if(row&&(event.key==='Enter'||event.key===' ')&&!event.target.closest('button')){event.preventDefault();openPositionDetails(row.dataset.ticker)}});
 document.querySelector('#closePositionDialog').addEventListener('click',()=>positionDialog.close());
 positionDialog.addEventListener('click',event=>{if(event.target===positionDialog)positionDialog.close()});
-document.querySelectorAll('#purchaseShares,#purchasePrice').forEach(input=>input.addEventListener('input',updatePurchaseTotal));
-document.querySelector('#purchaseForm').addEventListener('submit',event=>{
-  event.preventDefault();
-  const shares=AppCore.parseDecimal(document.querySelector('#purchaseShares').value),price=AppCore.parseDecimal(document.querySelector('#purchasePrice').value),date=document.querySelector('#purchaseDate').value;
-  if(!positionTicker||!date||!Number.isFinite(Date.parse(`${date}T00:00:00`))||!Number.isFinite(shares)||shares<=0||!Number.isFinite(price)||price<=0){toast('Wpisz prawidłową datę, liczbę jednostek i cenę.');return}
-  const holding=portfolio.find(item=>item.ticker===positionTicker);if(!holding)return;
-  if(!Array.isArray(holding.purchases))holding.purchases=[];
-  holding.purchases.push({date,shares,price:roundMoney(price)});
-  holding.purchases.sort((a,b)=>a.date.localeCompare(b.date));
-  safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
-  recordActivity('Dodano zakup',positionTicker,shares,Number.isFinite(prices[positionTicker])?shares*(prices[positionTicker]-price):null);
-  saveHistorySnapshot(true);render();openPositionDetails(positionTicker);toast('Zakup zapisany');
-});
+window.addEventListener('scroll',updateJournalNav,{passive:true});
+window.addEventListener('resize',updateJournalNav,{passive:true});
 function setView(view) {
   if(view==='analysis')view='stats';
-  const views=['portfolio','stats','simulation'];
+  const views=['portfolio','stats','journal','simulation'];
   views.forEach(name=>{const panel=document.querySelector(`#${name}View`);if(!panel)return;panel.classList.toggle('hidden',name!==view);if(name===view){panel.classList.remove('view-panel-enter');void panel.offsetWidth;panel.classList.add('view-panel-enter')}});
   views.forEach(name=>{
     const tab=document.querySelector(`#${name}Tab`);
     if(tab){tab.setAttribute('aria-selected',String(name===view));tab.tabIndex=name===view?0:-1}
   });
-  if(view==='stats'){renderStats();renderAnalysis();updateStatsNav()}
+  if(view==='stats'){renderStats();updateStatsNav()}
+  if(view==='journal'){renderAnalysis();updateJournalNav()}
   updateNavigationDock()
 }
 const statsNav=document.querySelector('#statsNav'),statsPanels=[
   ['statsOverview',document.querySelector('#statsView > .stats-cards')],
   ['statsValueHistory',document.querySelector('#statsView > .panel')],
-  ['statsActivity',document.querySelector('#activityTitle').closest('.panel')],
-  ...[...document.querySelectorAll('#analysisView .analysis-panel')].map((panel,index)=>[['statsDeposits','statsQuarters','statsInvestments','statsReturns'][index],panel])
+  ['statsActivity',document.querySelector('#activityTitle').closest('.panel')]
 ].filter(([,element])=>element);
 statsPanels.forEach(([id,element])=>{element.id=id;element.style.scrollMarginTop='164px'});
 function updateStatsNav() {
@@ -1311,6 +1284,10 @@ function updateStatsNav() {
   statsNav.querySelectorAll('a').forEach(link=>{if(link.hash===`#${active}`)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')});
   updateNavigationDock()
 }
+const journalNav=document.querySelector('#journalNav');
+const journalPanels=[...document.querySelectorAll('#analysisView .analysis-panel')].map((panel,index)=>[['journalDeposits','journalQuarters','journalInvestments','journalReturns'][index],panel]);
+journalPanels.forEach(([id,element])=>{element.id=id;element.style.scrollMarginTop='164px'});
+function updateJournalNav(){if(document.querySelector('#journalView').classList.contains('hidden'))return;let active=journalPanels[0]?.[0];for(const [id,element] of journalPanels){if(element.getBoundingClientRect().top<=250)active=id;else break}journalNav.querySelectorAll('a').forEach(link=>{if(link.hash===`#${active}`)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')})}
 const themeToggle=document.querySelector('#themeToggle');
 const savedTheme=safeStorage.get('dividend-ike-theme');
 let darkMode=savedTheme==='dark'||savedTheme===null&&matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1325,6 +1302,7 @@ setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));
 document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));
+document.querySelector('#journalTab').addEventListener('click',()=>setView('journal'));
 document.querySelector('#simulationTab').addEventListener('click',()=>setView('simulation'));
 document.querySelector('.view-tabs').addEventListener('keydown',event=>{
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
@@ -1338,10 +1316,10 @@ document.querySelector('.period-tabs').addEventListener('keydown',event=>{
 });
 const viewNavigation=document.querySelector('.view-navigation'),viewTabs=document.querySelector('.view-tabs');
 const navigationDock=document.createElement('div');navigationDock.className='navigation-dock';navigationDock.setAttribute('aria-label','Nawigacja');
-const viewTabsClone=viewTabs.cloneNode(true),statsNavClone=statsNav.cloneNode(true);
-viewTabsClone.removeAttribute('id');statsNavClone.removeAttribute('id');
-for(const clone of [viewTabsClone,statsNavClone])clone.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));
-navigationDock.append(viewTabsClone,statsNavClone);document.body.append(navigationDock);
+const viewTabsClone=viewTabs.cloneNode(true),statsNavClone=statsNav.cloneNode(true),journalNavClone=journalNav.cloneNode(true);
+viewTabsClone.removeAttribute('id');statsNavClone.removeAttribute('id');journalNavClone.removeAttribute('id');
+for(const clone of [viewTabsClone,statsNavClone,journalNavClone])clone.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));
+navigationDock.append(viewTabsClone,statsNavClone,journalNavClone);document.body.append(navigationDock);
 function syncNavigationClone(source,clone) {
   const width=source.getBoundingClientRect().width;if(width)clone.style.width=`${width}px`;
   const originals=source.querySelectorAll('button,a'),copies=clone.querySelectorAll('button,a');
@@ -1353,13 +1331,15 @@ function isInViewport(element) {
   return rect.bottom>headerBottom&&rect.top<innerHeight
 }
 function updateNavigationDock() {
-  syncNavigationClone(viewTabs,viewTabsClone);syncNavigationClone(statsNav,statsNavClone);
+  syncNavigationClone(viewTabs,viewTabsClone);syncNavigationClone(statsNav,statsNavClone);syncNavigationClone(journalNav,journalNavClone);
   const showViews=!isInViewport(viewNavigation),showStats=!document.querySelector('#statsView').classList.contains('hidden')&&!isInViewport(statsNav);
-  navigationDock.classList.toggle('show-stats',showStats);navigationDock.classList.toggle('is-visible',showViews||showStats)
+  const showJournal=!document.querySelector('#journalView').classList.contains('hidden')&&!isInViewport(journalNav);
+  navigationDock.classList.toggle('show-stats',showStats);navigationDock.classList.toggle('show-journal',showJournal);navigationDock.classList.toggle('is-visible',showViews||showStats||showJournal)
 }
 viewTabsClone.addEventListener('click',event=>{const button=event.target.closest('.view-tab');if(!button)return;event.preventDefault();const index=[...viewTabsClone.querySelectorAll('.view-tab')].indexOf(button);viewTabs.querySelectorAll('.view-tab')[index]?.click()});
 viewTabsClone.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=[...viewTabsClone.querySelectorAll('.view-tab')],index=tabs.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next].focus();tabs[next].click()});
 statsNavClone.addEventListener('click',event=>{const link=event.target.closest('a[href^="#"]');if(!link)return;const original=[...statsNav.querySelectorAll('a')].find(item=>item.hash===link.hash);if(original){event.preventDefault();original.click()}});
+journalNavClone.addEventListener('click',event=>{const link=event.target.closest('a[href^="#"]');if(!link)return;const original=[...journalNav.querySelectorAll('a')].find(item=>item.hash===link.hash);if(original){event.preventDefault();original.click()}});
 const backToTop=document.createElement('button');
 backToTop.id='backToTop';backToTop.type='button';backToTop.setAttribute('aria-label','Wróć na górę strony');backToTop.title='Wróć na górę';
 backToTop.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
@@ -1387,7 +1367,8 @@ function openDepositForm(index=null) {
   editingDepositIndex=index;
   const currentValue=portfolio.reduce((sum,item)=>sum+(Number.isFinite(prices[item.ticker])&&prices[item.ticker]>0?item.shares*prices[item.ticker]:0),0);
   document.querySelector('#depositFormTitle').textContent=index===null?'Dodaj wpis':'Edytuj wpis';
-  document.querySelector('#depositDate').value=index===null?new Date().toISOString().slice(0,10):analysisEntries[index].date;
+  const dateInput=document.querySelector('#depositDate'),today=new Date().toISOString().slice(0,10);dateInput.max=today;
+  document.querySelector('#depositDate').value=index===null?today:analysisEntries[index].date;
   document.querySelector('#depositBalance').value=roundMoney(index===null?currentValue:analysisEntries[index].balance).toFixed(2);
   document.querySelector('#depositAmount').value=index===null?'':roundMoney(analysisEntries[index].deposit).toFixed(2);
   document.querySelector('#depositProfit').value=index===null||analysisEntries[index].positionProfit===undefined?'':roundMoney(analysisEntries[index].positionProfit).toFixed(2);
@@ -1404,7 +1385,7 @@ depositForm.addEventListener('submit',event=>{
   event.preventDefault();
   const profitInput=document.querySelector('#depositProfit'),amountInput=document.querySelector('#depositAmount'),balanceInput=document.querySelector('#depositBalance'),entry={date:document.querySelector('#depositDate').value,deposit:roundMoney(AppCore.parseDecimal(amountInput.value)),balance:roundMoney(AppCore.parseDecimal(balanceInput.value)),...(profitInput.value===''?{}:{positionProfit:roundMoney(AppCore.parseDecimal(profitInput.value))})};
   for(const input of [amountInput,balanceInput,profitInput])input.setCustomValidity(input.value===''&&input===profitInput||Number.isFinite(AppCore.parseDecimal(input.value))?'':'Wpisz poprawną liczbę, używając przecinka lub kropki.');if(!depositForm.reportValidity())return;
-  if(!DividendAnalysis.validEntry(entry)){toast('Wpisz poprawną datę oraz kwoty nieujemne i skończone.');return}
+  if(entry.date>new Date().toISOString().slice(0,10)||!DividendAnalysis.validEntry(entry)){toast('Data nie może być z przyszłości. Wpisz prawidłową datę i kwoty nieujemne.');return}
   if(editingDepositIndex===null&&analysisEntries.length>=DividendAnalysis.MAX_ENTRIES){toast('Możesz zapisać maksymalnie 400 wpisów.');return}
   const entries=[...analysisEntries];if(editingDepositIndex===null)entries.push(entry);else entries[editingDepositIndex]=entry;
   analysisEntries=DividendAnalysis.normalizeEntries(entries);saveAnalysisStorage();depositDialog.close();renderAnalysis();
