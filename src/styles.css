@@ -397,6 +397,41 @@ tbody tr:hover  {
   font-variant-numeric:tabular-nums;
   font-weight:600
 }
+.dividend-status  {
+  display:block;
+  width:max-content;
+  max-width:100%;
+  margin-top:5px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#eef4ef;
+  color:#42614b;
+  font-size:10px;
+  font-weight:600;
+  line-height:1.35
+}
+.dividend-status.custom  {
+  background:#edf2fc;
+  color:#385487
+}
+.dividend-status.none  {
+  background:#f1f2f1;
+  color:#626a64
+}
+.dividend-note  {
+  display:block;
+  max-width:210px;
+  margin-top:5px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:400;
+  line-height:1.4
+}
+td a  {
+  display:inline-block;
+  margin-top:5px;
+  font-size:11px
+}
 .yield  {
   color:var(--green);
   font-weight:700
@@ -1329,7 +1364,10 @@ body.dark-mode  {
   }
 }
 .analysis-cards  {
-  grid-template-columns:repeat(5,minmax(0,1fr))
+  grid-template-columns:repeat(4,minmax(0,1fr))
+}
+.analysis-cards.has-annualized  {
+  grid-template-columns:repeat(6,minmax(0,1fr))
 }
 .analysis-cards .stats-card  {
   min-width:0

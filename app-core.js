@@ -2,6 +2,15 @@
   const money = value => new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const percent = value => value === null || !Number.isFinite(value) ? '—' : `${(value * 100).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}%`;
   const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  function isMarketOpen(symbols, date = new Date()) {
+    return symbols.some(symbol => {
+      const zone = symbol?.endsWith('.WA') ? 'Europe/Warsaw' : symbol?.endsWith('.DE') || symbol?.endsWith('.AS') ? 'Europe/Berlin' : null;
+      if (!zone) return false;
+      const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date).map(part => [part.type, part.value]));
+      const minutes = Number(parts.hour) * 60 + Number(parts.minute);
+      return !['Sat', 'Sun'].includes(parts.weekday) && minutes >= 540 && minutes < (zone === 'Europe/Warsaw' ? 1020 : 1050);
+    });
+  }
   function calculateHolding(shares, price, dividend) {
     return { income: shares * dividend, value: Number.isFinite(price) && price > 0 ? shares * price : null, yieldRate: price > 0 ? dividend / price * 100 : null };
   }
@@ -27,7 +36,7 @@
     if (data.tour !== undefined && (!data.tour || typeof data.tour.completed !== 'boolean' || !Number.isInteger(data.tour.lastStep) || data.tour.lastStep < -1 || data.tour.lastStep >= 9)) return false;
     return Object.entries(data.prices).every(([ticker, value]) => known.has(ticker) && Number.isFinite(value) && value > 0) && Object.entries(data.priceTimes).every(([ticker, value]) => known.has(ticker) && validDate(value));
   }
-  const api = { calculateHolding, escapeHtml, money, percent, summarizePortfolio, validateBackup };
+  const api = { calculateHolding, escapeHtml, isMarketOpen, money, percent, summarizePortfolio, validateBackup };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.AppCore = api;
 })(typeof window !== 'undefined' ? window : globalThis);

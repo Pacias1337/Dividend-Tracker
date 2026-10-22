@@ -16,6 +16,28 @@
     return { year, quarter, key: `${year}-Q${quarter}` };
   };
 
+  function calculateXirr(entries, balance, days) {
+    if (days < 365 || !Number.isFinite(balance) || balance <= 0) return null;
+    const flows = entries.flatMap(item => {
+      const amount = item.deposit > 0 ? -item.deposit : item.start ? -item.balance : 0;
+      return amount ? [{ date: Date.parse(`${item.date}T00:00:00Z`), amount }] : [];
+    });
+    if (!flows.length) return null;
+    flows.push({ date: Date.parse(`${entries.at(-1).date}T00:00:00Z`), amount: balance });
+    const origin = flows[0].date;
+    const npv = rate => flows.reduce((sum, flow) => sum + flow.amount / (1 + rate) ** ((flow.date - origin) / 86400000 / 365), 0);
+    let low = -0.999999, high = 1;
+    if (npv(low) <= 0) return null;
+    while (high < 1000000 && npv(high) > 0) high *= 2;
+    if (npv(high) > 0) return null;
+    for (let i = 0; i < 100; i++) {
+      const middle = (low + high) / 2;
+      if (npv(middle) > 0) low = middle;
+      else high = middle;
+    }
+    return (low + high) / 2;
+  }
+
   function calculateAnalysis(input, inflation = {}, monthlyInflation = {}) {
     const entries = normalizeEntries(input);
     if (!inflation || typeof inflation !== 'object' || Array.isArray(inflation)) inflation = {};
@@ -32,7 +54,8 @@
     const last = rows.at(-1);
     const days = last ? (Date.parse(`${last.date}T00:00:00Z`) - Date.parse(`${entries[0].date}T00:00:00Z`)) / 86400000 : 0;
     const totalReturn = last && totalDeposits > 0 ? (last.balance - totalDeposits) / totalDeposits : null;
-    const cagr = days > 0 && totalDeposits > 0 ? (1 + totalReturn) ** (365 / days) - 1 : 0;
+    const cagr = days >= 365 && totalDeposits > 0 && totalReturn > -1 ? (1 + totalReturn) ** (365 / days) - 1 : null;
+    const xirr = calculateXirr(entries, last?.balance, days);
     const quarters = [];
     if (entries.length) {
       const start = quarterOf(entries[0].date);
@@ -62,10 +85,10 @@
     const shownQuarters = quarters.filter(item => item.deposit > 0);
     const knownInflation = quarters.map(item => item.inflation).filter(value => value !== null);
     const finalQuarter = quarters.at(-1);
-    return { rows, quarters: shownQuarters, totalDeposits, balance: last?.balance ?? null, totalProfit: last ? last.balance - totalDeposits : null, totalReturn, cagr, summary: { deposit: quarters.reduce((sum, item) => sum + item.deposit, 0), cumulativeDeposits: finalQuarter?.cumulativeDeposits ?? 0, balance: finalQuarter?.balance ?? null, change: quarters.reduce((sum, item) => sum + item.change, 0), returnRate: finalQuarter && finalQuarter.cumulativeDeposits > 0 ? (finalQuarter.balance - finalQuarter.cumulativeDeposits) / finalQuarter.cumulativeDeposits : null, inflation: knownInflation.length ? knownInflation.reduce((sum, value) => sum + value, 0) / knownInflation.length : null, depositsWithInflation: finalQuarter?.depositsWithInflation ?? null } };
+    return { rows, quarters: shownQuarters, totalDeposits, balance: last?.balance ?? null, totalProfit: last ? last.balance - totalDeposits : null, totalReturn, cagr, xirr, days, summary: { deposit: quarters.reduce((sum, item) => sum + item.deposit, 0), cumulativeDeposits: finalQuarter?.cumulativeDeposits ?? 0, balance: finalQuarter?.balance ?? null, change: quarters.reduce((sum, item) => sum + item.change, 0), returnRate: finalQuarter && finalQuarter.cumulativeDeposits > 0 ? (finalQuarter.balance - finalQuarter.cumulativeDeposits) / finalQuarter.cumulativeDeposits : null, inflation: knownInflation.length ? knownInflation.reduce((sum, value) => sum + value, 0) / knownInflation.length : null, depositsWithInflation: finalQuarter?.depositsWithInflation ?? null } };
   }
 
-  const api = { MAX_ENTRIES, validDate, validEntry, normalizeEntries, validBackupFields, quarterOf, calculateAnalysis };
+  const api = { MAX_ENTRIES, validDate, validEntry, normalizeEntries, validBackupFields, quarterOf, calculateXirr, calculateAnalysis };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.DividendAnalysis = api;
 })(typeof window !== 'undefined' ? window : globalThis);

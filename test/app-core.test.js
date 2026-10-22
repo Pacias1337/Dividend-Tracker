@@ -15,6 +15,13 @@ test('formats money and percentages using Polish locale', () => {
   assert.equal(AppCore.percent(null), '—');
 });
 
+test('reports exchange sessions by local exchange time', () => {
+  assert.equal(AppCore.isMarketOpen(['PZU.WA'], new Date('2026-10-22T08:00:00Z')), true); // 10:00 in Warsaw
+  assert.equal(AppCore.isMarketOpen(['EUNL.DE'], new Date('2026-10-22T08:00:00Z')), true); // 10:00 in Berlin
+  assert.equal(AppCore.isMarketOpen(['EUNL.DE'], new Date('2026-10-22T16:15:00Z')), false);
+  assert.equal(AppCore.isMarketOpen(['PZU.WA'], new Date('2026-10-24T08:00:00Z')), false);
+});
+
 test('calculates holding and portfolio totals', () => {
   assert.deepEqual(AppCore.calculateHolding(3, 20, 2), { income: 6, value: 60, yieldRate: 10 });
   assert.deepEqual(AppCore.summarizePortfolio([{ ticker: 'PZU', shares: 3 }], { PZU: 20 }, { PZU: { dividend: 2 } }), { annual: 6, value: 60 });

@@ -11,7 +11,8 @@ test('jeden wpis wylicza wpłatę, zysk i zwrot', () => {
   const result = calculateAnalysis([{ date: '2025-01-15', deposit: 100, balance: 120 }]);
   assert.equal(result.rows[0].profit, 20);
   assert.equal(result.rows[0].returnRate, 0.2);
-  assert.equal(result.cagr, 0); // Jeden dzień pomiaru oznacza 0 dni między pierwszym i ostatnim wpisem.
+  assert.equal(result.cagr, null);
+  assert.equal(result.xirr, null);
 });
 
 test('wpłata zero daje brak procentowego zwrotu zamiast dzielenia przez zero', () => {
@@ -26,9 +27,43 @@ test('pusty kwartał przenosi stan konta z najbliższego wcześniejszego wpisu',
   assert.deepEqual(result.quarters.map(row => row.balance), [110, 140]);
 });
 
-test('CAGR wynosi zero dla jednego dnia, nawet gdy wpisy mają tę samą datę', () => {
+test('rocznej stopy zwrotu nie ma dla wpisów z tą samą datą', () => {
   const result = calculateAnalysis([{ date: '2025-01-15', deposit: 100, balance: 100 }, { date: '2025-01-15', deposit: 0, balance: 120 }]);
-  assert.equal(result.cagr, 0);
+  assert.equal(result.cagr, null);
+  assert.equal(result.xirr, null);
+});
+
+test('XIRR dla jednej wpłaty uwzględnia czas i nie anualizuje okresu poniżej roku', () => {
+  const annual = calculateAnalysis([{ date: '2024-01-01', deposit: 100, balance: 100 }, { date: '2025-01-01', deposit: 0, balance: 110 }]);
+  assert.ok(Math.abs(annual.xirr - ((1.1 ** (365 / 366)) - 1)) < 1e-8);
+  const short = calculateAnalysis([{ date: '2025-01-01', deposit: 100, balance: 100 }, { date: '2025-06-01', deposit: 0, balance: 120 }]);
+  assert.equal(short.totalReturn, 0.2);
+  assert.equal(short.cagr, null);
+  assert.equal(short.xirr, null);
+});
+
+test('XIRR traktuje początkowe saldo jako kapitał zainwestowany', () => {
+  const result = calculateAnalysis([
+    { date: '2024-01-01', deposit: 0, balance: 100, start: true },
+    { date: '2025-01-01', deposit: 0, balance: 110 },
+  ]);
+  assert.ok(Math.abs(result.xirr - ((1.1 ** (365 / 366)) - 1)) < 1e-8);
+});
+
+test('XIRR wielu wpłat ma rozwiązanie, a zerowe saldo nie ma annualizowanej stopy', () => {
+  const result = calculateAnalysis([
+    { date: '2024-01-01', deposit: 100, balance: 100 },
+    { date: '2024-07-01', deposit: 100, balance: 200 },
+    { date: '2025-01-01', deposit: 0, balance: 220 },
+  ]);
+  const days = [0, 182, 366];
+  const npv = -100 / (1 + result.xirr) ** (days[0] / 365) - 100 / (1 + result.xirr) ** (days[1] / 365) + 220 / (1 + result.xirr) ** (days[2] / 365);
+  assert.ok(Number.isFinite(result.xirr));
+  assert.ok(Math.abs(npv) < 1e-7);
+  const loss = calculateAnalysis([{ date: '2024-01-01', deposit: 100, balance: 100 }, { date: '2025-01-01', deposit: 0, balance: 0 }]);
+  assert.equal(loss.totalReturn, -1);
+  assert.equal(loss.cagr, null);
+  assert.equal(loss.xirr, null);
 });
 
 test('kilka kwartałów sumuje wpłaty, przenosi saldo i wylicza proste porównania', () => {

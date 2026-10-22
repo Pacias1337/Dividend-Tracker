@@ -551,17 +551,17 @@ const companies=[  {
   year: 2026,
   quoteSymbol: 'MBR.WA'
 },
- { ticker: 'WORLD', name: 'iShares Core MSCI World', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'EUNL.DE' },
- { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', sector: 'ETF · rynki wschodzące', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'IS3N.DE' },
- { ticker: 'SP500', name: 'iShares Core S&P 500', sector: 'ETF · USA', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'SXR8.DE' },
+ { ticker: 'WORLD', name: 'iShares Core MSCI World', sector: 'ETF · akcje globalne', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'EUNL.DE' },
+ { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', sector: 'ETF · rynki wschodzące', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'IS3N.DE' },
+ { ticker: 'SP500', name: 'iShares Core S&P 500', sector: 'ETF · USA', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'SXR8.DE' },
  { ticker: 'VHYL', name: 'Vanguard FTSE All-World High Dividend Yield', sector: 'ETF · dywidendowy', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'VGWD.DE' },
- { ticker: 'NASDAQ', name: 'iShares NASDAQ 100', sector: 'ETF · USA', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'SXRV.DE' },
- { ticker: 'GOLD', name: 'iShares Physical Gold ETC', sector: 'ETC · złoto', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'PPFB.DE' },
- { ticker: 'VWCE', name: 'Vanguard FTSE All-World', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'VWCE.DE' },
- { ticker: 'ACWI', name: 'iShares MSCI ACWI', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'IUSQ.DE' },
- { ticker: 'MWIG40TR', name: 'BETA ETF mWIG40TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBM40TR.WA' },
- { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
- { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
+ { ticker: 'NASDAQ', name: 'iShares NASDAQ 100', sector: 'ETF · USA', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'SXRV.DE' },
+ { ticker: 'GOLD', name: 'iShares Physical Gold ETC', sector: 'ETC · złoto', assetType: 'etf', distributes: false, distributionNote: 'ETC na złoto nie wypłaca dywidend; jego kurs odzwierciedla cenę złota.', dividend: 0, year: 2026, quoteSymbol: 'PPFB.DE' },
+ { ticker: 'VWCE', name: 'Vanguard FTSE All-World', sector: 'ETF · akcje globalne', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'VWCE.DE' },
+ { ticker: 'ACWI', name: 'iShares MSCI ACWI', sector: 'ETF · akcje globalne', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'IUSQ.DE' },
+ { ticker: 'MWIG40TR', name: 'BETA ETF mWIG40TR', sector: 'ETF · Polska', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'ETFBM40TR.WA' },
+ { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
+ { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', assetType: 'etf', distributes: false, dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
 ];
 const defaultPortfolio=[];
 let portfolio=JSON.parse(safeStorage.get('dividend-ike-portfolio')||'null')||defaultPortfolio;
@@ -658,6 +658,8 @@ const roundDividend=value=>Number((Math.round((value+Number.EPSILON)*100)/100).t
 portfolio.forEach(holding=>{if(Number.isFinite(holding.dividend))holding.dividend=roundDividend(holding.dividend)});
 safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
 const getCompany=t=>companies.find(c=>c.ticker===t);
+const ikeRulesWarning=document.querySelector('#ikeRulesWarning');
+if(new Date().getFullYear()>IkeSimulation.IKE_RULES.year){ikeRulesWarning.textContent=`Limit wpłat dotyczy roku ${IkeSimulation.IKE_RULES.year} — sprawdź aktualne obwieszczenie.`;ikeRulesWarning.classList.remove('hidden')}
 const percent=AppCore.percent;
 const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
 let showAllDepositEntries=false,showAllQuarterRows=false;
@@ -668,7 +670,12 @@ function renderAnalysis() {
   document.querySelector('#analysisDeposits').textContent=hasEntries?money(result.totalDeposits):'—';
   document.querySelector('#analysisProfit').textContent=hasEntries?money(result.totalProfit):'—';
   document.querySelector('#analysisReturn').textContent=percent(result.totalReturn);
-  document.querySelector('#analysisCagr').textContent=hasEntries?percent(result.cagr):'—';
+  const annualized=hasEntries&&result.days>=365;
+  document.querySelector('.analysis-cards').classList.toggle('has-annualized',annualized);
+  document.querySelector('#analysisCagrCard').classList.toggle('hidden',!annualized);
+  document.querySelector('#analysisXirrCard').classList.toggle('hidden',!annualized);
+  document.querySelector('#analysisCagr').textContent=percent(result.cagr);
+  document.querySelector('#analysisXirr').textContent=percent(result.xirr);
   const depositRows=document.querySelector('#depositRows');depositRows.replaceChildren();
   const depositMore=document.querySelector('#showDepositRows'),showAllDeposits=showAllDepositEntries&&result.rows.length>3;
   depositMore.classList.toggle('hidden',result.rows.length<=3);depositMore.setAttribute('aria-expanded',String(showAllDeposits));depositMore.textContent=showAllDeposits?'Pokaż mniej':`Pokaż więcej (${Math.max(0,result.rows.length-3)})`;
@@ -800,6 +807,14 @@ function updatePortfolioSortIndicators()  {
     const isActive = button.dataset.sort === portfolioSort.column; const indicator = button.querySelector(".sort-indicator"); const header = button.closest("th"); indicator.textContent = portfolioSort.direction === "asc" ? "↑" : "↓"; indicator.classList.toggle("hidden", !isActive); header.setAttribute("aria-sort", isActive ? (portfolioSort.direction === "asc" ? "ascending" : "descending") : "none"); button.setAttribute("aria-label", `Sortuj według ${button.dataset.label} ${portfolioSort.direction === "asc" ? "rosnąco" : "malejąco"}`);
   });
 }
+function dividendStatusMarkup(holding, company) {
+  if(holding.year==='własna')return '<span class="dividend-status custom">Własna</span>';
+  if(company.distributes===false)return `<span class="dividend-status none">Brak wypłat</span><small class="dividend-note">${escapeHtml(company.distributionNote||'Dochód pozostaje w funduszu; jego wynik widać w kursie.')}</small>`;
+  const label=company.dividendStatus==='approved'?`Zatwierdzona (${escapeHtml(company.year)})`:company.dividendStatus==='last-paid'?`Ostatnia wypłata (${escapeHtml(company.year)})`:'Domyślna (brak danych)';
+  const source=typeof company.dividendSourceUrl==='string'&&/^https:\/\//i.test(company.dividendSourceUrl)?`<a href="${escapeHtml(company.dividendSourceUrl)}" target="_blank" rel="noreferrer">Źródło ↗</a>`:'';
+  const asOf=company.dividendAsOf&&Number.isFinite(Date.parse(company.dividendAsOf))?`<small class="dividend-note">Dane z ${escapeHtml(new Date(company.dividendAsOf).toLocaleDateString('pl-PL'))}</small>`:'';
+  return `<span class="dividend-status">${label}</span>${source}${asOf}`;
+}
 function render() {
   const rows=document.querySelector('#rows');
   rows.innerHTML='';
@@ -816,7 +831,17 @@ function render() {
     income=calculations.income,
     yieldRate=calculations.yieldRate,
     warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>': '';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.sector)}</small></span></div></td><td class="num">${escapeHtml(holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6}))}</td><td class="num" title="${escapeHtml(priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania')}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${escapeHtml(`${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}`)}">${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${escapeHtml(c.name)}" title="Edytuj" data-edit="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${escapeHtml(c.name)}" title="Usuń" data-delete="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
+    const priceTitle=priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania';
+    const dividendAmount=c.distributes===false&&holding.year!=='własna'?'—':`${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł`;
+    row.innerHTML=`
+      <td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.sector)}</small></span></div></td>
+      <td class="num">${escapeHtml(holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6}))}</td>
+      <td class="num" title="${escapeHtml(priceTitle)}">${price?money(price):'—'}</td>
+      <td class="num">${price?money(holding.shares*price):'—'}</td>
+      <td class="num">${dividendAmount}${dividendStatusMarkup(holding,c)}</td>
+      <td class="num">${money(income)}</td>
+      <td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td>
+      <td><button type="button" class="edit" aria-label="Edytuj pozycję ${escapeHtml(c.name)}" title="Edytuj" data-edit="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${escapeHtml(c.name)}" title="Usuń" data-delete="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
     rows.append(row)
   }
   document.querySelector('#annual').textContent=money(totals.annual);
@@ -1275,9 +1300,15 @@ async function refreshPrices(showToast=false,allCompanies=false) {
         updated++
       }
     }
-    const staleQuote=Object.values(data.quotes||{}).find(quote=>quote?.stale);
-    if(data.updatedAt&&!allCompanies)status.textContent=staleQuote?Number.isFinite(Date.parse(staleQuote.asOf))?`Kursy sprzed ${Math.max(1,Math.floor((Date.now()-Date.parse(staleQuote.asOf))/60000))} min · źródło chwilowo niedostępne.`:'Ostatnie kursy są nieaktualne · źródło chwilowo niedostępne.':updated?`Kursy: Yahoo Finance · ostatnie notowania ${new Date(latestQuoteTime||Date.parse(data.updatedAt)).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}. Dane mogą być opóźnione.`: 'Yahoo Finance nie zwróciło teraz kursów GPW; spróbuję ponownie za minutę.';
-    else throw Error()
+    const staleQuote=Object.values(data.quotes||{}).find(quote=>quote?.stale),marketOpen=AppCore.isMarketOpen(portfolio.map(holding=>getCompany(holding.ticker)?.quoteSymbol).filter(Boolean));
+    const savedQuoteTime=Math.max(0,...portfolio.map(holding=>Date.parse(priceTimes[holding.ticker])||0)),quoteTime=latestQuoteTime||savedQuoteTime;
+    const quoteLabel=quoteTime?`Ostatnie notowanie ${new Date(quoteTime).toLocaleString('pl-PL',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'})}`:'Brak zapisanych kursów';
+    if(data.updatedAt&&!allCompanies) {
+      if(staleQuote)status.textContent=Number.isFinite(Date.parse(staleQuote.asOf))?`Kursy sprzed ${Math.max(1,Math.floor((Date.now()-Date.parse(staleQuote.asOf))/60000))} min · źródło chwilowo niedostępne.`:'Ostatnie kursy są nieaktualne · źródło chwilowo niedostępne.';
+      else if(!marketOpen)status.textContent=`Rynek jest poza typowymi godzinami sesji. ${quoteLabel}.`;
+      else if(updated)status.textContent=`Kursy: Yahoo Finance · ${quoteLabel}. Dane mogą być opóźnione.`;
+      else status.textContent='Źródło nie zwróciło teraz kursów; spróbuję ponownie za minutę.';
+    } else throw Error()
   }
   catch {
     status.textContent='Nie udało się pobrać kursów. Uruchom aplikację przez lokalny serwer (instrukcja w README).'
