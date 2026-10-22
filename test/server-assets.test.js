@@ -2,18 +2,19 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { findGusCsvUrl, getQuotes, parseGusInflation, server } = require('../server');
 
-test('serwer udostępnia analysis.js jako JavaScript', async () => {
-  let status, headers, body;
-  let finish;
-  const completed = new Promise(resolve => { finish = resolve; });
-  server.emit('request', { url: '/analysis.js' }, {
-    writeHead(code, values) { status = code; headers = values; },
-    end(value) { body = value; finish(); },
-  });
-  await completed;
-  assert.equal(status, 200);
-  assert.match(headers['content-type'], /text\/javascript/);
-  assert.match(body.toString(), /DividendAnalysis/);
+test('serwer udostępnia moduły analizy, symulatora i samouczka jako JavaScript', async () => {
+  for (const [path, marker] of [['analysis.js', 'DividendAnalysis'], ['simulation.js', 'IkeSimulation'], ['tutorial.js', 'AppTutorial']]) {
+    let status, headers, body, finish;
+    const completed = new Promise(resolve => { finish = resolve; });
+    server.emit('request', { url: `/${path}` }, {
+      writeHead(code, values) { status = code; headers = values; },
+      end(value) { body = value; finish(); },
+    });
+    await completed;
+    assert.equal(status, 200, path);
+    assert.match(headers['content-type'], /text\/javascript/);
+    assert.match(body.toString(), new RegExp(marker));
+  }
 });
 
 test('parser GUS wybiera inflację r/r z tabeli miesięcznej', () => {

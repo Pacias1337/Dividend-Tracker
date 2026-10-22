@@ -6,7 +6,7 @@ Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglą
   <img src="docs/screenshots/dashboard_mixtheme.jpg" alt="Dividend Tracker w trybie jasnym i ciemnym" width="900">
 </p>
 
-Aplikacja oferuje przejrzysty interfejs, statystyki oraz 70 spółek dywidendowych. (Jeśli chcesz, abym dodał jakąś spółkę, napisz do mnie lub zostaw feedback pod projektem).
+Aplikacja oferuje przejrzysty interfejs, około 70 spółek GPW oraz popularne ETF-y. (Jeśli chcesz, abym dodał instrument, napisz do mnie lub zostaw feedback pod projektem).
 
 ## Wsparcie projektu
 
@@ -27,8 +27,9 @@ Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplik
 - **Wartość portfela** i średnia stopa dywidendy liczone z aktualnych kursów
 - **Alokacja kapitału według sektorów** na wykresie kołowym
 - **Lista Twoich spółek**: liczba akcji, kurs, łączna wartość, dywidenda na akcję, szacowana dywidenda roczna i stopa dywidendy
-- **Statystyki**: zmiana wartości portfela w czasie oraz historia zmian
-- **Analiza**: porównanie sumy wpłat z wartością konta, zyskiem, stopą zwrotu, ręcznie wpisaną inflacją i lokatą; dane wpisuje użytkownik, a aplikacja zapisuje je lokalnie
+- **Statystyki i analiza** w jednej zakładce: historia portfela, dziennik wpłat, inflacja i porównanie z lokatą
+- **Tryb startowy** i symulator IKE: użytkownik wpisuje własne założenia, porównuje trzy scenariusze i sprawdza uproszczoną symulację wypłaty
+- **Samouczek** prowadzący po głównych funkcjach aplikacji oraz słowniczek pojęć
 - **Tryb jasny i ciemny**
 - **Kopia zapasowa** portfela do pliku JSON i import na innym urządzeniu
 - **Prywatność**: portfel zostaje w Twojej przeglądarce i nie jest wysyłany na serwer
@@ -43,17 +44,15 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
   <img src="docs/screenshots/wallet.png" alt="Widok portfela" width="700">
 </p>
 
-### Statystyki
+### Statystyki i analiza
 
-Zmiana wartości portfela w czasie i historia zmian.
+Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wpłat, analizę inflacji, porównanie z lokatą i symulator IKE. Dziennik i symulator nie zawierają przykładowych danych.
 
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
 </p>
 
-### Analiza
-
-Wpisz daty wpłat, kwoty i stan konta, aby śledzić zysk oraz stopę zwrotu. Możesz też uzupełnić inflację dla kwartałów i porównać wynik z lokatą. Widok nie zawiera przykładowych danych.
+Tryb startowy nie wstawia przykładowych sald ani stóp zwrotu. Symulacja ma charakter edukacyjny i pokazuje uproszczony wariant warunków wypłaty; szczegółowe zasady i rozliczenie podatku sprawdź w instytucji prowadzącej IKE. Limit wpłat na 2026 r. wynosi 28 260 zł i należy aktualizować go po publikacji nowego obwieszczenia.
 
 ## Wymagania
 

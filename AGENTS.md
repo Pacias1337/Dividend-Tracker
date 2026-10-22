@@ -4,7 +4,7 @@ Zasady pracy nad projektem Dividend Tracker. Przeczytaj je przed wprowadzeniem z
 
 ## Opis
 
-Dividend Tracker to prosty kalkulator dywidend z rynku GPW (portfel na IKE). Użytkownik wybiera spółki, które posiada u prawdziwego brokera (aplikacja nie łączy się z brokerem, tak jest zaplanowane), i wpisuje tylko liczbę posiadanych akcji.
+Dividend Tracker to prosty kalkulator dywidend i tracker portfela na IKE. Użytkownik wybiera spółki GPW oraz obsługiwane ETF-y, które posiada u prawdziwego brokera (aplikacja nie łączy się z brokerem), i wpisuje liczbę akcji lub jednostek.
 
 Skąd pochodzą dane:
 
@@ -22,9 +22,10 @@ Skąd pochodzą dane:
 - Node.js (serwer w `server.js`, bez zewnętrznych paczek w działaniu aplikacji)
 - HTML, JavaScript (`index.html`, `app.js`)
 - Moduł obliczeń widoku Analiza (`analysis.js`)
+- Moduł symulatora IKE (`simulation.js`) i samouczek (`tutorial.js`)
 - Tailwind CSS 4: źródło w `src/styles.css`, wynik w `app.css`
 - Yahoo Finance (ceny i zapasowo dywidendy) oraz Agent Rynku (dywidendy z uchwał WZA)
-- Testy: wbudowany `node:test`, pliki `test/dividends.test.js` i `test/analysis.test.js`
+- Testy: wbudowany `node:test`, pliki `test/dividends.test.js`, `test/analysis.test.js` i `test/simulation.test.js`
 - Dane użytkownika są zapisywane w `localStorage` przeglądarki, serwer niczego nie przechowuje
 
 ## Uruchamianie
@@ -44,8 +45,10 @@ Domyślny adres to `http://127.0.0.1:4173`. Jeśli port jest zajęty i nie ustaw
 ## Czego nie ruszać
 
 - Klucze w `localStorage`: `dividend-ike-portfolio`, `dividend-ike-prices`, `dividend-ike-price-times`, `dividend-ike-history`, `dividend-ike-history-started`, `dividend-ike-activity`, `dividend-ike-theme`. Zmiana nazwy oznacza, że użytkownik traci swój portfel.
-- Dane widoku Analiza są przechowywane lokalnie pod kluczami `dividend-ike-deposits` (maksymalnie 400 wpisów `{ date, deposit, balance }`), `dividend-ike-inflation` (roczne stopy inflacji dla kwartałów) i `dividend-ike-deposit-rate` (roczna stopa lokaty, domyślnie 3%). Ustawienia są opcjonalnymi polami kopii zapasowej v1: `inflation` i `depositRate`, a wpisy wpłat są w `deposits`.
-- Format kopii zapasowej (`app: 'Dividend Tracker'`, `version: 1`) oraz funkcję `validateBackup`. Stare kopie muszą dalej się importować. Funkcja uznaje za znane także ticker `SPL` (na potrzeby starych kopii), więc go stamtąd nie usuwaj.
+- Statystyki i Analiza są w jednej zakładce. Dziennik wpłat jest przechowywany pod `dividend-ike-deposits` (maksymalnie 400 wpisów `{ date, deposit, balance, start? }`), inflacja pod `dividend-ike-inflation`, a stopa lokaty pod `dividend-ike-deposit-rate`. Wpis z `start: true` oznacza punkt początkowy.
+- Symulator i samouczek zapisują dane pod kluczami `dividend-ike-simulation` i `dividend-ike-tour`. Nie zmieniaj istniejących kluczy ani nie wpisuj użytkownikowi przykładowych kwot.
+- Jedynym źródłem reguł symulatora jest `IKE_RULES` w `simulation.js`. Aktualizuj rok i limit wpłat z oficjalnego obwieszczenia co roku; warunki wypłaty w symulacji są uproszczone i muszą być tak opisane w interfejsie.
+- Format kopii zapasowej (`app: 'Dividend Tracker'`, `version: 1`) oraz funkcję `validateBackup`. Stare kopie muszą dalej się importować. Opcjonalne pola kopii obejmują m.in. `inflation`, `depositRate`, `simulation` i `tour`. Funkcja uznaje za znane także ticker `SPL` (na potrzeby starych kopii), więc go stamtąd nie usuwaj.
 - Kształt odpowiedzi `/api/quotes`: `quotes.<TICKER>.price`, `currency`, `asOf`.
 - Kształt odpowiedzi `/api/dividends`: `dividends.<TICKER>` to albo `null`, albo obiekt z polami `amount`, `year`, `status` (`approved` lub `last-paid`), `asOf`, `sourceUrl`. Front (`refreshDividends` w `app.js`) na tym polega.
 - Eksporty z `server.js` (`fetchDividend`, `getDividends`, `selectApprovedDividend`, `selectLastPaidDividend`, `callPublicDividends`, `getLastPaidDividend`, `dividendCache`, `server`) oraz warunek `require.main === module` przy starcie serwera. Testy importują ten plik i nie mogą przy tym uruchamiać serwera.

@@ -235,7 +235,7 @@ const server = http.createServer(async (req, res) =>  {
     catch { return json(res, 502, { error: 'Dane o inflacji z GUS są chwilowo niedostępne.' }); }
   }
   if (pathname === '/api/dividends')  {
-    const symbols = [...new Set((requestUrl.searchParams.get('symbols') ?? '') .split(',') .map((ticker) => ticker.trim().toUpperCase()) .filter((ticker) => Object.hasOwn(tickers, ticker)))].slice(0, 70); try  {
+    const symbols = [...new Set((requestUrl.searchParams.get('symbols') ?? '') .split(',') .map((ticker) => ticker.trim().toUpperCase()) .filter((ticker) => Object.hasOwn(tickers, ticker)))].slice(0, Object.keys(tickers).length); try  {
       return json(res, 200, await getDividends(symbols));
     }
     catch  {
@@ -256,9 +256,9 @@ const server = http.createServer(async (req, res) =>  {
       });
     }
   }
-  if (pathname === '/app.css' || pathname === '/app.js' || pathname === '/analysis.js')  {
+  if (['/app.css', '/app.js', '/analysis.js', '/simulation.js', '/tutorial.js'].includes(pathname))  {
     try  {
-      const isCss = pathname === '/app.css', file = isCss ? 'app.css' : pathname === '/analysis.js' ? 'analysis.js' : 'app.js'; res.writeHead(200,  {
+      const isCss = pathname === '/app.css', file = pathname.slice(1); res.writeHead(200,  {
         'content-type': `${isCss ? 'text/css' : 'text/javascript'}; charset=utf-8`, 'cache-control': 'no-store'
       }); return res.end(await readFile(path.join(__dirname, file)));
     }

@@ -550,17 +550,17 @@ const companies=[  {
   year: 2026,
   quoteSymbol: 'MBR.WA'
 },
- { ticker: 'WORLD', name: 'iShares Core MSCI World', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'EUNL.DE' },
- { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', sector: 'ETF · rynki wschodzące', dividend: 0, year: 2026, quoteSymbol: 'IS3N.DE' },
- { ticker: 'SP500', name: 'iShares Core S&P 500', sector: 'ETF · USA', dividend: 0, year: 2026, quoteSymbol: 'SXR8.DE' },
- { ticker: 'VHYL', name: 'Vanguard FTSE All-World High Dividend Yield', sector: 'ETF · dywidendowy', dividend: 0, year: 2026, quoteSymbol: 'VGWD.DE' },
- { ticker: 'NASDAQ', name: 'iShares NASDAQ 100', sector: 'ETF · USA', dividend: 0, year: 2026, quoteSymbol: 'SXRV.DE' },
- { ticker: 'GOLD', name: 'iShares Physical Gold ETC', sector: 'ETC · złoto', dividend: 0, year: 2026, quoteSymbol: 'PPFB.DE' },
- { ticker: 'VWCE', name: 'Vanguard FTSE All-World', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'VWCE.DE' },
- { ticker: 'ACWI', name: 'iShares MSCI ACWI', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'IUSQ.DE' },
- { ticker: 'MWIG40TR', name: 'BETA ETF mWIG40TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBM40TR.WA' },
- { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
- { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
+ { ticker: 'WORLD', name: 'iShares Core MSCI World', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'EUNL.DE' },
+ { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', sector: 'ETF · rynki wschodzące', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'IS3N.DE' },
+ { ticker: 'SP500', name: 'iShares Core S&P 500', sector: 'ETF · USA', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'SXR8.DE' },
+ { ticker: 'VHYL', name: 'Vanguard FTSE All-World High Dividend Yield', sector: 'ETF · dywidendowy', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'VGWD.DE' },
+ { ticker: 'NASDAQ', name: 'iShares NASDAQ 100', sector: 'ETF · USA', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'SXRV.DE' },
+ { ticker: 'GOLD', name: 'iShares Physical Gold ETC', sector: 'ETC · złoto', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'PPFB.DE' },
+ { ticker: 'VWCE', name: 'Vanguard FTSE All-World', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'VWCE.DE' },
+ { ticker: 'ACWI', name: 'iShares MSCI ACWI', sector: 'ETF · akcje globalne', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'IUSQ.DE' },
+ { ticker: 'MWIG40TR', name: 'BETA ETF mWIG40TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBM40TR.WA' },
+ { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
+ { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
 ];
 const defaultPortfolio=['PZU',
 'PEO',
@@ -601,7 +601,8 @@ function migrateSantanderData() {
   localStorage.setItem('dividend-ike-price-times',JSON.stringify(priceTimes));
   localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))
 }
-let editTicker=null,
+let assetFilter='stock',
+editTicker=null,
 sortDirection='asc',
 portfolioSort= {
   column: null,
@@ -616,6 +617,24 @@ let statsPeriod='week';
 let historyStartedAt=localStorage.getItem('dividend-ike-history-started')||new Date().toISOString();
 localStorage.setItem('dividend-ike-history-started',historyStartedAt);
 const depositStorageKey='dividend-ike-deposits',inflationStorageKey='dividend-ike-inflation',depositRateStorageKey='dividend-ike-deposit-rate';
+const simulationStorageKey='dividend-ike-simulation';
+const emptySimulation=()=>({mode:null,existing:{value:null,deposits:null,profit:null},plan:{monthlyDeposit:null,annualReturnPct:null,years:null,birthYear:null,firstDepositYear:null,annualInflationPct:null},withdrawalAmount:null,annualLimit:IkeSimulation.IKE_RULES.annualLimit,enabled:false,capToLimit:false});
+function validSimulationState(value) {
+  const numeric=(item,min,max)=>item===null||Number.isFinite(item)&&item>=min&&item<=max;
+  return value&&typeof value==='object'&&!Array.isArray(value)&&[null,'new','existing'].includes(value.mode)&&typeof value.enabled==='boolean'&&typeof (value.capToLimit??false)==='boolean'&&value.existing&&numeric(value.existing.value,0,1e12)&&numeric(value.existing.deposits,0,1e12)&&numeric(value.existing.profit,-1e12,1e12)&&value.plan&&numeric(value.plan.monthlyDeposit,0,1e9)&&numeric(value.plan.annualReturnPct,-100,100)&&numeric(value.plan.years,1,80)&&numeric(value.plan.birthYear,1900,new Date().getFullYear())&&numeric(value.plan.firstDepositYear,1900,new Date().getFullYear()+80)&&numeric(value.plan.annualInflationPct,-99,1000)&&numeric(value.withdrawalAmount,0,1e12)&&(value.annualLimit===null||Number.isFinite(value.annualLimit)&&value.annualLimit>=0&&value.annualLimit<=1e9);
+}
+function readSimulationState() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(simulationStorageKey));
+    if(!validSimulationState(saved))return emptySimulation();
+    const defaults=emptySimulation();
+    return {mode:saved.mode,enabled:saved.enabled,capToLimit:saved.capToLimit??false,annualLimit:saved.annualLimit,withdrawalAmount:saved.withdrawalAmount,existing:Object.fromEntries(Object.keys(defaults.existing).map(key=>[key,saved.existing[key]??null])),plan:Object.fromEntries(Object.keys(defaults.plan).map(key=>[key,saved.plan[key]??null]))};
+  }
+  catch { return emptySimulation() }
+}
+let simulationState=readSimulationState();
+let firstStarterVisit=!simulationState.enabled&&simulationState.mode===null;
+function saveSimulationState() { localStorage.setItem(simulationStorageKey,JSON.stringify(simulationState)) }
 function readAnalysisStorage(key,fallback) {
   try { return JSON.parse(localStorage.getItem(key)??JSON.stringify(fallback)) }
   catch { return fallback }
@@ -636,6 +655,9 @@ function saveAnalysisStorage() {
 const money=n=>new Intl.NumberFormat('pl-PL', {
   style: 'currency',currency: 'PLN'
 }).format(n);
+const roundDividend=value=>Number((Math.round((value+Number.EPSILON)*100)/100).toFixed(2));
+portfolio.forEach(holding=>{if(Number.isFinite(holding.dividend))holding.dividend=roundDividend(holding.dividend)});
+localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
 const getCompany=t=>companies.find(c=>c.ticker===t);
 const percent=value=>value===null||!Number.isFinite(value)?'—':`${(value*100).toLocaleString('pl-PL',{maximumFractionDigits:2})}%`;
 const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
@@ -669,6 +691,109 @@ function renderAnalysis() {
   }
   renderAnalysisChart('investmentChart','investmentChartEmpty',result.rows,[{className:'analysis-line-balance',values:result.rows.map(row=>row.balance),label:'Stan konta'},{className:'analysis-line-deposits',values:result.rows.map(row=>row.cumulativeDeposits),label:'Suma wpłat'}],false);
   renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'}],true);
+}
+let wizardStep=simulationState.plan.monthlyDeposit!==null?(simulationState.plan.years!==null?(simulationState.plan.annualReturnPct!==null?5:3):2):0,statsOpened=false;
+const simFieldMap={planMonthly:['plan','monthlyDeposit'],planYears:['plan','years'],planReturn:['plan','annualReturnPct'],planBirthYear:['plan','birthYear'],planFirstYear:['plan','firstDepositYear'],planInflation:['plan','annualInflationPct'],existingMonthly:['plan','monthlyDeposit'],existingYears:['plan','years'],existingReturn:['plan','annualReturnPct'],existingBirthYear:['plan','birthYear'],existingFirstYear:['plan','firstDepositYear'],existingInflation:['plan','annualInflationPct'],existingValue:['existing','value'],existingDeposits:['existing','deposits'],existingProfit:['existing','profit']};
+function setInputValue(id,value) { document.querySelector(`#${id}`).value=value===null||value===undefined?'':String(value) }
+function saveSimulationInput(event) {
+  const input=event.target,number=input.value===''?null:input.valueAsNumber;
+  if(input.id==='annualLimit')simulationState.annualLimit=number;
+  else if(input.id==='withdrawalAmount')simulationState.withdrawalAmount=number;
+  else if(simFieldMap[input.id])simulationState[simFieldMap[input.id][0]][simFieldMap[input.id][1]]=number;
+  saveSimulationState();renderSimulation();
+}
+function syncSimulationInputs() {
+  for(const [id,[group,key]] of Object.entries(simFieldMap))setInputValue(id,simulationState[group][key]);
+  setInputValue('annualLimit',simulationState.annualLimit);setInputValue('withdrawalAmount',simulationState.withdrawalAmount);
+}
+function renderWizard() {
+  document.querySelectorAll('[data-wizard-step]').forEach(step=>step.classList.toggle('hidden',Number(step.dataset.wizardStep)!==wizardStep));
+  document.querySelector('#wizardCount').textContent=`Krok ${wizardStep+1} z 6`;
+  document.querySelector('#wizardProgress').style.width=`${(wizardStep+1)/6*100}%`;
+  document.querySelector('#wizardBack').disabled=wizardStep===0;
+  document.querySelector('#wizardNext').textContent=wizardStep===5?'Zobacz wynik':'Dalej';
+}
+function renderStarter() {
+  const enabled=simulationState.enabled,mode=simulationState.mode;
+  document.querySelector('#simulationToggle').setAttribute('aria-checked',String(enabled));
+  document.querySelector('#simulationToggle').textContent=enabled?'Wyłącz':'Włącz';
+  document.querySelector('#starterBanner').classList.toggle('hidden',!firstStarterVisit||enabled);
+  document.querySelector('#starterContent').classList.toggle('hidden',!enabled);
+  document.querySelector('#modePicker').classList.toggle('hidden',!enabled||Boolean(mode));
+  document.querySelector('#newWizard').classList.toggle('hidden',!enabled||mode!=='new');
+  document.querySelector('#existingForm').classList.toggle('hidden',!enabled||mode!=='existing');
+  document.querySelector('#firstSteps').classList.toggle('hidden',!enabled);
+  document.querySelector('#firstStepPortfolio').classList.toggle('is-done',portfolio.some(item=>item.shares>0));
+  document.querySelector('#firstStepDeposit').classList.toggle('is-done',analysisEntries.length>0);
+  document.querySelector('#firstStepStats').classList.toggle('is-done',statsOpened);
+  document.querySelector('#ikeRulesYear').textContent=IkeSimulation.IKE_RULES.year;
+  document.querySelector('#annualLimitYear').textContent=IkeSimulation.IKE_RULES.year;
+  document.querySelector('#ikeLimitGlossary').textContent=`Roczna maksymalna suma wpłat na IKE. W ${IkeSimulation.IKE_RULES.year} r. wynosi ${money(IkeSimulation.IKE_RULES.annualLimit)}.`;
+  document.querySelector('#taxGlossary').textContent=`Podatek od zysków kapitałowych. Przykład ilustracyjny: od 100 zł zysku ${IkeSimulation.IKE_RULES.taxRate*100}% to ${money(100*IkeSimulation.IKE_RULES.taxRate)} podatku.`;
+  renderWizard();renderSimulation();
+}
+function getSimulationStart() {
+  if(simulationState.mode==='new')return { value:0,deposits:0 };
+  const result=IkeSimulation.reconcileExisting(simulationState.existing.value,simulationState.existing.deposits,simulationState.existing.profit);
+  const error=document.querySelector('#existingError'),resolved=document.querySelector('#existingResolved');
+  error.textContent=result.valid?'':result.error;error.classList.toggle('hidden',result.valid);
+  resolved.textContent=result.valid?`Wyliczone wartości: ${money(result.value)} wartości IKE, ${money(result.deposits)} wpłat, ${money(result.profit)} zysku / straty.`:'';
+  return result.valid?{value:result.value,deposits:result.deposits}:null;
+}
+function simulationDisplay(value,years=0) {
+  const inflation=simulationState.plan.annualInflationPct;
+  return money(document.querySelector('#showRealValue').checked&&inflation!==null?IkeSimulation.realValue(value,years,inflation):value);
+}
+function renderSimulationChart(scenarios,years) {
+  const svg=document.querySelector('#simulationChart'),left=100,right=740,top=22,bottom=220;
+  svg.replaceChildren();
+  const series=[{scenario:scenarios[0],color:'#7d8990',key:'niższy'},{scenario:scenarios[1],color:'#168256',key:'bazowy'},{scenario:scenarios[2],color:'#66a98a',key:'wyższy'}];
+  const adjust=(row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.value,index+1,simulationState.plan.annualInflationPct):row.value;
+  const all=series.flatMap(item=>item.scenario.rows.map((row,index)=>adjust(row,index))).concat(scenarios[1].rows.map((row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.deposits,index+1,simulationState.plan.annualInflationPct):row.deposits));
+  let low=Math.min(0,...all),high=Math.max(1,...all);if(low===high)high=low+1;const pad=(high-low)*.1;low=Math.max(0,low-pad);high+=pad;
+  const x=index=>left+(right-left)*index/Math.max(1,years-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),ns='http://www.w3.org/2000/svg';
+  for(let i=0;i<3;i++){const value=high-(high-low)*i/2,yy=top+(bottom-top)*i/2,line=document.createElementNS(ns,'line'),label=document.createElementNS(ns,'text');line.setAttribute('class','history-grid');line.setAttribute('x1',left);line.setAttribute('x2',right);line.setAttribute('y1',yy);line.setAttribute('y2',yy);label.setAttribute('class','history-label');label.setAttribute('x','0');label.setAttribute('y',yy+4);label.textContent=money(value);svg.append(line,label)}
+  const deposits=scenarios[1].rows.map((row,index)=>document.querySelector('#showRealValue').checked&&simulationState.plan.annualInflationPct!==null?IkeSimulation.realValue(row.deposits,index+1,simulationState.plan.annualInflationPct):row.deposits);
+  for(const item of [...series,{scenario:{rows:scenarios[1].rows},color:'#7d8990',key:'wpłaty',values:deposits}]){
+    const values=item.values||item.scenario.rows.map((row,index)=>adjust(row,index)),polyline=document.createElementNS(ns,'polyline');polyline.setAttribute('fill','none');polyline.setAttribute('stroke',item.color);polyline.setAttribute('stroke-width','3');polyline.setAttribute('points',values.map((value,index)=>`${x(index)},${y(value)}`).join(' '));svg.append(polyline);
+    values.forEach((value,index)=>{const circle=document.createElementNS(ns,'circle'),title=document.createElementNS(ns,'title');circle.setAttribute('cx',x(index));circle.setAttribute('cy',y(value));circle.setAttribute('r','4');circle.setAttribute('fill',item.color);circle.setAttribute('class','simulation-point');title.textContent=`${scenarios[1].rows[index].year}: ${item.key} · ${money(value)}`;circle.append(title);svg.append(circle)});
+  }
+  const start=document.createElementNS(ns,'text'),end=document.createElementNS(ns,'text');start.setAttribute('class','history-label');start.setAttribute('x',left);start.setAttribute('y','248');start.textContent=String(scenarios[1].rows[0].year);end.setAttribute('class','history-label');end.setAttribute('x',right);end.setAttribute('text-anchor','end');end.setAttribute('y','248');end.textContent=String(scenarios[1].rows.at(-1).year);svg.append(start,end);
+}
+function renderSimulation() {
+  const results=document.querySelector('#simulationResults');
+  if(!simulationState.enabled||!simulationState.mode){results.classList.add('hidden');return}
+  if(simulationState.mode==='new'&&wizardStep<5){results.classList.add('hidden');return}
+  const start=getSimulationStart(),plan=simulationState.plan;
+  const planValid=Number.isFinite(plan.monthlyDeposit)&&plan.monthlyDeposit>=0&&Number.isFinite(plan.annualReturnPct)&&plan.annualReturnPct>=-100&&plan.annualReturnPct<=100&&Number.isInteger(plan.years)&&plan.years>=1&&plan.years<=80&&Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0;
+  const planError=document.querySelector('#existingPlanError'),limitError=document.querySelector('#limitError');
+  planError.textContent=planValid?'':'Wpisz poprawną miesięczną wpłatę, stopę od −100% do 100% i pełny horyzont od 1 do 80 lat.';planError.classList.toggle('hidden',planValid||simulationState.mode!=='existing');
+  limitError.textContent=Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0?'':'Limit musi być nieujemną kwotą.';limitError.classList.toggle('hidden',Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0);
+  if(!start||!planValid){results.classList.add('hidden');return}
+  const input={startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1};
+  const scenarios=IkeSimulation.projectScenarios(input);if(scenarios.some(item=>!item.valid)){results.classList.add('hidden');return}
+  results.classList.remove('hidden');
+  const base=scenarios[1].rows,last=base.at(-1),isReal=document.querySelector('#showRealValue').checked;
+  document.querySelector('#simEndValue').textContent=simulationDisplay(last.value,plan.years);
+  document.querySelector('#simDeposits').textContent=simulationDisplay(last.deposits,plan.years);
+  document.querySelector('#simProfit').textContent=simulationDisplay(last.profit,plan.years);
+  const overLimit=scenarios.some(item=>item.rows.some(row=>row.limitExceeded));document.querySelector('#limitWarning').classList.toggle('hidden',!overLimit||simulationState.capToLimit);
+  const realToggle=document.querySelector('#showRealValue');realToggle.disabled=plan.annualInflationPct===null;if(realToggle.disabled)realToggle.checked=false;
+  const rows=document.querySelector('#simulationRows');rows.replaceChildren();
+  for(const [index,row] of base.entries()) {const tr=document.createElement('tr');[row.year,money(row.yearlyDeposit),simulationDisplay(row.deposits,index+1),simulationDisplay(row.value,index+1),simulationDisplay(row.profit,index+1),money(row.tax),money(row.net)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});rows.append(tr)}
+  renderSimulationChart(scenarios,plan.years);
+  const conditions=IkeSimulation.ikeConditions({birthYear:plan.birthYear,firstDepositYear:plan.firstDepositYear,currentYear:new Date().getFullYear()}),atEnd=IkeSimulation.ikeConditions({birthYear:plan.birthYear,firstDepositYear:plan.firstDepositYear,currentYear:last.year}),eligibleNow=conditions.ageMet===true&&conditions.yearsMet===true;
+  document.querySelector('#conditionsStatus').textContent=conditions.ageMet===null||conditions.yearsMet===null?'Uzupełnij rok urodzenia i rok pierwszej wpłaty, aby sprawdzić uproszczone warunki IKE.':`Dziś: wiek ${conditions.ageMet?'spełniony':'niespełniony'}, lata wpłat ${conditions.yearsMet?'spełnione':'niespełnione'}. W roku ${last.year}: wiek ${atEnd.ageMet?'spełniony':'niespełniony'}, lata wpłat ${atEnd.yearsMet?'spełnione':'niespełnione'}; uproszczone warunki łącznie od ${conditions.eligibleYear} r.`;
+  const amount=simulationState.withdrawalAmount,withdrawalError=document.querySelector('#withdrawalError');
+  document.querySelector('#withdrawalAmount').max=String(last.value);
+  if(amount===null){withdrawalError.classList.add('hidden');document.querySelector('#withdrawNow').replaceChildren();document.querySelector('#withdrawLater').replaceChildren();document.querySelector('#taxDifference').textContent='';return}
+  const now=IkeSimulation.withdrawalTax(last.value,last.deposits,amount);if(!now.valid){withdrawalError.textContent=now.error;withdrawalError.classList.remove('hidden');document.querySelector('#withdrawNow').replaceChildren();document.querySelector('#withdrawLater').replaceChildren();document.querySelector('#taxDifference').textContent='';return}
+  withdrawalError.classList.add('hidden');
+  const later={...now,tax:0,net:amount};
+  const renderDetails=(id,result)=>{const list=document.querySelector(`#${id}`);list.replaceChildren();const values=[['Podatek',money(result.tax)],['Kwota netto',money(result.net)],['Część kapitałowa',money(result.capital)],['Część zyskowa',money(result.gain)],['Stan po wypłacie',money(result.remainingValue)]];for(const [label,value] of values){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;list.append(dt,dd)}};
+  renderDetails('withdrawNow',eligibleNow?later:now);renderDetails('withdrawLater',later);
+  document.querySelector('#taxDifference').textContent=`Różnica: ${money(eligibleNow?0:now.tax)} podatku mniej po spełnieniu warunków.`;
+  if(isReal)document.querySelector('#simulationTitle').textContent='Wynik symulacji · wartości w dzisiejszych złotówkach';else document.querySelector('#simulationTitle').textContent='Wynik symulacji';
 }
 function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   const svg=document.querySelector(`#${svgId}`),empty=document.querySelector(`#${emptyId}`),values=series.flatMap(item=>item.values.filter(Number.isFinite));
@@ -708,21 +833,21 @@ async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) 
       const company=getCompany(ticker);
       if(!company||!Number.isFinite(dividendData?.amount)||dividendData.amount<0)continue;
       const previousDividend=company.dividend;
-      company.dividend=dividendData.amount;
+      company.dividend=roundDividend(dividendData.amount);
       company.year=dividendData.year;
       company.dividendStatus=dividendData.status;
       company.dividendAsOf=dividendData.asOf;
       company.dividendSourceUrl=dividendData.sourceUrl;
       for(const holding of portfolio) {
         if(holding.ticker===ticker&&holding.year!=='własna') {
-          holding.dividend=dividendData.amount;
+          holding.dividend=company.dividend;
           holding.year=dividendData.year;
         }
       }
       const selectedTicker=document.querySelector('#company')?.value;
       const dividendInput=document.querySelector('#dividend');
       if(selectedTicker===ticker&&Number(dividendInput.value)===previousDividend) {
-        dividendInput.value=dividendData.amount;
+        dividendInput.value=company.dividend.toFixed(2);
       }
       changed=true;
     }
@@ -791,7 +916,7 @@ function render() {
     }
     const yieldRate=price>0?dividend/price*100: null,
     warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>': '';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}">${dividend.toLocaleString('pl-PL',{minimumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${c.name}" title="Edytuj" data-edit="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${c.name}" title="Usuń" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
+    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}">${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${c.name}" title="Edytuj" data-edit="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${c.name}" title="Usuń" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
     rows.append(row)
   }
   document.querySelector('#annual').textContent=money(annual);
@@ -860,7 +985,7 @@ function renderStats() {
   if(points.length)renderHistoryChart(points);
   document.querySelector('#activityCount').textContent=`(${portfolioActivity.length})`;
   document.querySelector('#activityEmpty').classList.toggle('hidden',portfolioActivity.length>0);
-  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,12).map(item=>`<li><span>${item.action}: ${getCompany(item.ticker)?.name||item.ticker}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} akcji</small></span><time datetime="${item.at}">${new Date(item.at).toLocaleString('pl-PL')}</time></li>`).join(''): '';
+  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,12).map(item=>`<li><span>${item.action}: ${getCompany(item.ticker)?.name||item.ticker}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek</small></span><time datetime="${item.at}">${new Date(item.at).toLocaleString('pl-PL')}</time></li>`).join(''): '';
   document.querySelectorAll('.period-tab').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.period===statsPeriod)));
 }
 function renderHistoryChart(points) {
@@ -942,7 +1067,7 @@ function renderSectorChart() {
     const fraction=value/total,share=fraction*100,length=fraction*circumference,start=offset/circumference*360-90;offset+=length;return`<circle class="sector-slice" cx="160" cy="160" r="${radius}" fill="none" stroke="${colors[i]}" stroke-width="76" stroke-dasharray="${length} ${circumference-length}" transform="rotate(${start} 160 160)" data-sector="${sector}" data-share="${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%" data-value="${value}" data-color="${colors[i]}" tabindex="0" role="img" aria-label="${sector}: ${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%, ${money(value)}"></circle>`
   }).join('');
   svg.innerHTML=`${slices}<circle class="sector-hole" cx="160" cy="160" r="61"/>`;
-  svg.setAttribute('aria-label','Alokacja kapitału według sektorów');
+  svg.setAttribute('aria-label','Alokacja portfela według sektorów spółek i grup ETF-ów');
   legend.innerHTML=entries.map(([sector],i)=>`<li><span class="sector-dot" style="background:${colors[i]}"></span><span>${sector}</span></li>`).join('')
 }
 const sectorTooltip=document.querySelector('#sectorTooltip'),
@@ -997,11 +1122,11 @@ function options() {
   field=document.querySelector('#companySort').value,
   direction=sortDirection;
   const list=document.querySelector('#companyList');
-  const filtered=companies.filter(c=>`${c.name} ${c.ticker}`.toLocaleLowerCase('pl-PL').includes(query));
+  const filtered=companies.filter(c=>(assetFilter==='etf'?c.assetType==='etf':c.assetType!=='etf')&&`${c.name} ${c.ticker}`.toLocaleLowerCase('pl-PL').includes(query));
   filtered.sort((a,b)=> {
     if(field==='name')return direction==='asc'?a.name.localeCompare(b.name,'pl'): b.name.localeCompare(a.name,'pl');const av=field==='price'?prices[a.ticker]: a.dividend,bv=field==='price'?prices[b.ticker]: b.dividend;if(av==null)return bv==null?a.name.localeCompare(b.name,'pl'): 1;if(bv==null)return-1;return direction==='asc'?av-bv: bv-av
   });
-  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${c.ticker}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${c.ticker}" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${c.name}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono spółki.</div>'
+  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${c.ticker}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${c.ticker}" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${c.name}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono instrumentów.</div>'
 }
 function setCompany(ticker) {
   const company=getCompany(ticker);
@@ -1026,11 +1151,13 @@ function openForm(ticker=null) {
   editTicker=ticker;
   document.querySelector('#companySearch').value='';
   document.querySelector('#companySort').value='name';
+  assetFilter=getCompany(ticker)?.assetType==='etf'?'etf':'stock';
+  document.querySelectorAll('[data-asset-filter]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.assetFilter===assetFilter)));
   sortDirection='asc';
   updateSortDirection();
   options();
   const h=ticker&&portfolio.find(x=>x.ticker===ticker);
-  document.querySelector('#formTitle').textContent=h?'Edytuj pozycję': 'Dodaj spółkę';
+  document.querySelector('#formTitle').textContent=h?'Edytuj pozycję': 'Dodaj pozycję';
   const company=ticker||companies.find(c=>!portfolio.some(p=>p.ticker===c.ticker))?.ticker||companies[0].ticker;
   document.querySelector('#companyTrigger').disabled=!!h;
   document.querySelector('#shares').value=h?.shares??'';
@@ -1048,11 +1175,20 @@ function closeForm() {
 document.querySelector('#companyTrigger').addEventListener('click',()=>togglePicker());
 document.querySelector('#companySearch').addEventListener('input',options);
 document.querySelector('#companySort').addEventListener('change',options);
+document.querySelectorAll('[data-asset-filter]').forEach(button=>button.addEventListener('click',()=>{
+  assetFilter=button.dataset.assetFilter;
+  document.querySelectorAll('[data-asset-filter]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+  options();
+}));
 document.querySelector('#sortDirection').addEventListener('click',()=> {
   sortDirection=sortDirection==='asc'?'desc': 'asc';updateSortDirection();options()
 });
 document.querySelector('#companyOptions').addEventListener('click',e=> {
-  const option=e.target.closest('[data-company]');if(!option)return;setCompany(option.dataset.company);document.querySelector('#dividend').value=getCompany(option.dataset.company).dividend;togglePicker(false);document.querySelector('#companyTrigger').focus();refreshDividends([option.dataset.company])
+  const option=e.target.closest('[data-company]');if(!option)return;setCompany(option.dataset.company);document.querySelector('#dividend').value=roundDividend(getCompany(option.dataset.company).dividend).toFixed(2);togglePicker(false);document.querySelector('#companyTrigger').focus();refreshDividends([option.dataset.company])
+});
+document.querySelector('#dividend').addEventListener('change',event=>{
+  const value=Number(event.target.value);
+  if(Number.isFinite(value)&&value>=0)event.target.value=roundDividend(value).toFixed(2);
 });
 document.querySelector('#companyTrigger').addEventListener('keydown',e=> {
   if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' ') {
@@ -1063,7 +1199,7 @@ document.querySelector('#companyOptions').addEventListener('keydown',e=> {
   if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const options=[...document.querySelectorAll('#companyOptions [role="option"]')],index=options.indexOf(document.activeElement);if(!options.length)return;const next=e.key==='Home'?0: e.key==='End'?options.length-1: (index+(e.key==='ArrowDown'?1: -1)+options.length)%options.length;options[next].focus()
 });
 document.querySelector('#form').addEventListener('submit',e=> {
-  e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),dividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(dividend)||dividend<0)return;const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję': 'Dodano pozycję';if(holding) {
+  e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),rawDividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(rawDividend)||rawDividend<0)return;const dividend=roundDividend(rawDividend);document.querySelector('#dividend').value=dividend.toFixed(2);const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję': 'Dodano pozycję';if(holding) {
     holding.shares=shares;holding.dividend=dividend;holding.year=dividend===company.dividend?company.year: 'własna'
   }
   else portfolio.push( {
@@ -1091,6 +1227,10 @@ document.querySelector('#form').addEventListener('click',e=> {
   if(!e.target.closest('#companyPicker')&&document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true')togglePicker(false)
 });
 document.addEventListener('keydown',e=> {
+  const modalOpen=!document.querySelector('#modalback').classList.contains('hidden'),dialogOpen=document.querySelector('#settingsDialog').open||document.querySelector('#depositDialog').open,isShortcut=(e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k',isSearchShortcut=e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.target.closest('input,textarea,select,[contenteditable="true"]');
+  if((isShortcut||isSearchShortcut)&&!modalOpen&&!dialogOpen) {
+    e.preventDefault();openForm();togglePicker(true);return
+  }
   if(e.key==='Escape'&&!document.querySelector('#modalback').classList.contains('hidden')) {
     if(document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true') {
       togglePicker(false);document.querySelector('#companyTrigger').focus()
@@ -1141,15 +1281,12 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
   const holding = portfolio.find((item) => item.ticker === ticker); recordActivity('Usunięto pozycję', ticker, holding?.shares || 0); portfolio = portfolio.filter((item) => item.ticker !== ticker); saveHistorySnapshot(true); render();
 });
 function setView(view) {
-  const stats=view==='stats',analysis=view==='analysis';
-  document.querySelector('#portfolioView').classList.toggle('hidden',stats||analysis);
+  const stats=view==='stats'||view==='analysis';
+  document.querySelector('#portfolioView').classList.toggle('hidden',stats);
   document.querySelector('#statsView').classList.toggle('hidden',!stats);
-  document.querySelector('#analysisView').classList.toggle('hidden',!analysis);
-  document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats&&!analysis));
+  document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats));
   document.querySelector('#statsTab').setAttribute('aria-selected',String(stats));
-  document.querySelector('#analysisTab').setAttribute('aria-selected',String(analysis));
-  if(stats)renderStats();
-  if(analysis)renderAnalysis();
+  if(stats){statsOpened=true;renderStats();renderAnalysis();renderStarter()}
 }
 const themeToggle=document.querySelector('#themeToggle');
 let darkMode=localStorage.getItem('dividend-ike-theme')==='dark';
@@ -1164,7 +1301,34 @@ setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));
 document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));
-document.querySelector('#analysisTab').addEventListener('click',()=>setView('analysis'));
+syncSimulationInputs();
+document.querySelector('#simulationToggle').addEventListener('click',()=>{simulationState.enabled=!simulationState.enabled;if(simulationState.enabled)firstStarterVisit=false;saveSimulationState();renderStarter()});
+document.querySelector('#enableSimulation').addEventListener('click',()=>{simulationState.enabled=true;firstStarterVisit=false;saveSimulationState();renderStarter()});
+document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>{simulationState.mode=button.dataset.mode;wizardStep=0;saveSimulationState();renderStarter()}));
+document.querySelectorAll('.change-mode').forEach(button=>button.addEventListener('click',()=>{simulationState.mode=null;wizardStep=0;saveSimulationState();renderStarter()}));
+document.querySelector('#wizardBack').addEventListener('click',()=>{wizardStep=Math.max(0,wizardStep-1);renderWizard();renderSimulation()});
+document.querySelector('#wizardNext').addEventListener('click',()=>{
+  const required={1:['monthlyDeposit','Wpisz planowaną miesięczną wpłatę.'],2:['years','Wpisz horyzont w pełnych latach.'],3:['annualReturnPct','Wpisz własne założenie stopy zwrotu.']}[wizardStep];
+  if(required&&simulationState.plan[required[0]]===null){toast(required[1]);document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
+  const plan=simulationState.plan;
+  if(wizardStep===1&&plan.monthlyDeposit<0||wizardStep===2&&(!Number.isInteger(plan.years)||plan.years<1||plan.years>80)||wizardStep===3&&(!Number.isFinite(plan.annualReturnPct)||plan.annualReturnPct< -100||plan.annualReturnPct>100)){toast('Sprawdź wartość w tym kroku i spróbuj ponownie.');document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
+  wizardStep=Math.min(5,wizardStep+1);renderWizard();renderSimulation();
+});
+document.querySelector('#starterContent').addEventListener('input',saveSimulationInput);
+document.querySelector('#showRealValue').addEventListener('change',renderSimulation);
+document.querySelector('#capContributions').addEventListener('click',()=>{simulationState.capToLimit=true;saveSimulationState();renderSimulation()});
+document.querySelector('#withdrawAll').addEventListener('click',()=>{const start=getSimulationStart(),plan=simulationState.plan;if(!start||!Number.isFinite(plan.monthlyDeposit)||!Number.isFinite(plan.annualReturnPct)||!Number.isInteger(plan.years))return;const result=IkeSimulation.projectGrowth({startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1});if(result.valid){simulationState.withdrawalAmount=result.rows.at(-1).value;setInputValue('withdrawalAmount',simulationState.withdrawalAmount);saveSimulationState();renderSimulation()}});
+document.querySelector('#saveStartEntry').addEventListener('click',()=>{
+  const start=getSimulationStart();if(simulationState.mode!=='existing'||!start){toast('Uzupełnij poprawnie co najmniej dwie wartości IKE.');return}
+  const confirmed=!analysisEntries.length||confirm('Wpis startowy zastąpi dotychczasowy dziennik, aby nie policzyć wpłat drugi raz. Kontynuować?');if(!confirmed)return;
+  analysisEntries=DividendAnalysis.normalizeEntries([{date:new Date().toISOString().slice(0,10),deposit:start.deposits,balance:start.value,start:true}]);saveAnalysisStorage();renderAnalysis();toast('Zapisano wpis startowy.');
+});
+document.querySelector('#offerTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
+document.querySelector('#startTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
+document.querySelector('#simulationToggle').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();document.querySelector('#simulationToggle').click()}});
+document.querySelector('#startTour').setAttribute('aria-keyshortcuts','F1');
+document.addEventListener('keydown',e=>{if(e.key==='F1'&&!e.target.closest('input,textarea,select,[contenteditable="true"]')){e.preventDefault();window.AppTutorial?.start({setView})}});
+saveSimulationState();renderStarter();
 const depositDialog=document.querySelector('#depositDialog'),depositForm=document.querySelector('#depositForm');
 let editingDepositIndex=null;
 function openDepositForm(index=null) {
@@ -1208,7 +1372,7 @@ async function refreshPrices(showToast=false) {
   button.disabled=true;
   button.textContent='Pobieram…';
   status.textContent='Pobieram kursy GPW…';
-  let updated=0;
+  let updated=0,latestQuoteTime=0;
   try {
     const response=await fetch('/api/quotes', {
       cache: 'no-store'
@@ -1220,10 +1384,11 @@ async function refreshPrices(showToast=false) {
       if(quote?.currency==='PLN'&&Number.isFinite(quote.price)&&quote.price>0) {
         prices[c.ticker]=quote.price;
         priceTimes[c.ticker]=quote.asOf||data.updatedAt;
+        latestQuoteTime=Math.max(latestQuoteTime,Date.parse(priceTimes[c.ticker])||0);
         updated++
       }
     }
-    if(data.updatedAt)status.textContent=updated?`Kursy: Yahoo Finance · ostatnie notowania ${new Date(Math.min(...Object.values(priceTimes).filter(Boolean).map(Date.parse))).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}. Dane mogą być opóźnione.`: 'Yahoo Finance nie zwróciło teraz kursów GPW; spróbuję ponownie za minutę.';
+    if(data.updatedAt)status.textContent=updated?`Kursy: Yahoo Finance · ostatnie notowania ${new Date(latestQuoteTime||Date.parse(data.updatedAt)).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}. Dane mogą być opóźnione.`: 'Yahoo Finance nie zwróciło teraz kursów GPW; spróbuję ponownie za minutę.';
     else throw Error()
   }
   catch {
@@ -1256,6 +1421,8 @@ function validateBackup(backup) {
   if(!data.history.every(h=>h&&validDate(h.at)&&Number.isFinite(h.value)&&h.value>=0&&Number.isFinite(h.annualIncome)&&h.annualIncome>=0))return false;
   if(!data.activity.every(a=>a&&validDate(a.at)&&known.has(a.ticker)&&['Dodano pozycję','Zaktualizowano pozycję','Usunięto pozycję'].includes(a.action)&&Number.isFinite(a.shares)&&a.shares>=0))return false;
   if(!DividendAnalysis.validBackupFields(data))return false;
+  if(data.simulation!==undefined&&!validSimulationState(data.simulation))return false;
+  if(data.tour!==undefined&&(!data.tour||typeof data.tour.completed!=='boolean'||!Number.isInteger(data.tour.lastStep)||data.tour.lastStep< -1||data.tour.lastStep>=8))return false;
   return Object.entries(data.prices).every(([ticker,value])=>known.has(ticker)&&Number.isFinite(value)&&value>0)&&Object.entries(data.priceTimes).every(([ticker,value])=>known.has(ticker)&&validDate(value))
 }
 const settingsDialog=document.querySelector('#settingsDialog');
@@ -1267,7 +1434,7 @@ settingsDialog.addEventListener('click',e=> {
 document.querySelector('#exportBackup').addEventListener('click',()=> {
   const backup= {
     app: 'Dividend Tracker',version: 1,createdAt: new Date().toISOString(),data:  {
-      portfolio,prices,priceTimes,history: portfolioHistory,activity: portfolioActivity,historyStartedAt,theme: darkMode?'dark': 'light',deposits: analysisEntries,inflation: analysisInflation,depositRate
+      portfolio,prices,priceTimes,history: portfolioHistory,activity: portfolioActivity,historyStartedAt,theme: darkMode?'dark': 'light',deposits: analysisEntries,inflation: analysisInflation,depositRate,simulation:simulationState,tour:window.AppTutorial?.readState()??{completed:false,lastStep:-1}
     }
   },url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)], {
     type: 'application/json'
@@ -1285,7 +1452,7 @@ document.querySelector('#backupFile').addEventListener('change',async e=> {
       toast('Plik nie jest prawidłową kopią Dividend Tracker');return
     }
     if(!confirm('Przywrócenie kopii zastąpi obecny portfel, historię i dane analizy. Kontynuować?'))return;const values= {
-      'dividend-ike-portfolio': backup.data.portfolio,'dividend-ike-prices': backup.data.prices,'dividend-ike-price-times': backup.data.priceTimes,'dividend-ike-history': backup.data.history,'dividend-ike-activity': backup.data.activity,'dividend-ike-history-started': backup.data.historyStartedAt,'dividend-ike-theme': backup.data.theme,'dividend-ike-deposits': backup.data.deposits??[],'dividend-ike-inflation': backup.data.inflation??{},'dividend-ike-deposit-rate': backup.data.depositRate??0.03
+      'dividend-ike-portfolio': backup.data.portfolio,'dividend-ike-prices': backup.data.prices,'dividend-ike-price-times': backup.data.priceTimes,'dividend-ike-history': backup.data.history,'dividend-ike-activity': backup.data.activity,'dividend-ike-history-started': backup.data.historyStartedAt,'dividend-ike-theme': backup.data.theme,'dividend-ike-deposits': backup.data.deposits??[],'dividend-ike-inflation': backup.data.inflation??{},'dividend-ike-deposit-rate': backup.data.depositRate??0.03,'dividend-ike-simulation':backup.data.simulation??emptySimulation(),'dividend-ike-tour':backup.data.tour??{completed:false,lastStep:-1}
     };for(const [key,value] of Object.entries(values))localStorage.setItem(key,typeof value==='string'?value: JSON.stringify(value));location.reload()
   }
   catch {

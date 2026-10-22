@@ -66,6 +66,12 @@ test('stara kopia bez pól analizy i poprawna nowa kopia są akceptowane', () =>
   assert.equal(validBackupFields({ deposits: [{ date: '2025-01-01', deposit: 10, balance: 12 }], inflation: { '2025-Q1': 0.03 }, depositRate: 0.04 }), true);
 });
 
+test('wpis startowy przechodzi normalizację i zachowuje znacznik', () => {
+  const entries = normalizeEntries([{ date: '2026-10-22', deposit: 1000, balance: 1200, start: true }, { date: '2026-10-23', deposit: 100, balance: 1300, start: 'yes' }]);
+  assert.deepEqual(entries, [{ date: '2026-10-22', deposit: 1000, balance: 1200, start: true }]);
+  assert.equal(validBackupFields({ deposits: entries }), true);
+});
+
 test('uszkodzone lub zbyt duże pola analizy w kopii są odrzucane', () => {
   assert.equal(validBackupFields({ deposits: [{ date: '2025-02-30', deposit: 1, balance: 2 }] }), false);
   assert.equal(validBackupFields({ inflation: { '2025-Q5': 0.03 } }), false);
