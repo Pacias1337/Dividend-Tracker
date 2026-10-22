@@ -1,4 +1,5 @@
 const http = require('node:http');
+const { createHash } = require('node:crypto');
 const  {
   readFile
 }
@@ -23,7 +24,7 @@ async function getFxRate(currency) {
   const cached = fxCache.get(currency);
   if (cached && Date.now() - cached.time < 60000) return cached.rate;
   if (!fxPending.has(currency)) fxPending.set(currency, (async () => {
-    const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${currency}PLN=X?range=1d&interval=1m`, { headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(10000) });
+    const response = await fetchWithRetry(`https://query1.finance.yahoo.com/v8/finance/chart/${currency}PLN=X?range=1d&interval=1m`, { headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(10000) });
     const rate = Number((await response.json()).chart?.result?.[0]?.meta?.regularMarketPrice);
     if (!response.ok || !Number.isFinite(rate) || rate <= 0) throw new Error('Exchange rate unavailable');
     fxCache.set(currency, { time: Date.now(), rate });
@@ -31,10 +32,36 @@ async function getFxRate(currency) {
   })().finally(() => fxPending.delete(currency)));
   return fxPending.get(currency);
 }
-let cache;
 const dividendCache = new Map();
 const dividendCacheTtl = 6 * 60 * 60 * 1000;
+const dividendErrorCacheTtl = 5 * 60 * 1000;
+const quoteCache = new Map();
+const quoteResponseCache = new Map();
+const requestLimit = 4;
+const assetVersion = createHash('sha1').update(['index.html', 'app.css', 'app.js', 'analysis.js', 'simulation.js', 'tutorial.js', 'company-logos.js'].map(file => `${file}:${require('node:fs').statSync(path.join(__dirname, file)).mtimeMs}`).join('|')).digest('hex').slice(0, 10);
 let inflationCache;
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (!Number.isFinite(response.status) || response.status < 500 || attempt === 1) return response;
+    } catch (error) {
+      if (attempt === 1) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100));
+  }
+}
+async function mapLimit(items, limit, callback) {
+  const result = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      result[index] = await callback(items[index], index);
+    }
+  }));
+  return result;
+}
 function parseGusInflation(csv) {
   const result = {};
   for (const line of csv.replace(/^\uFEFF/, '').split(/\r?\n/)) {
@@ -70,28 +97,37 @@ const json = (res, status, value) =>  {
   });
   res.end(JSON.stringify(value));
 };
-async function getQuotes()  {
-  const quotes = Object.fromEntries(await Promise.all(Object.entries(tickers).map(async ([ticker, symbol]) =>  {
+async function getQuotes(symbols = Object.keys(tickers))  {
+  const selected = [...new Set(symbols)].filter(ticker => Object.hasOwn(tickers, ticker));
+  const cacheKey = selected.slice().sort().join(',');
+  const cachedResponse = quoteResponseCache.get(cacheKey);
+  if (cachedResponse && Date.now() - cachedResponse.time < 30000) return cachedResponse.data;
+  const quotes = Object.fromEntries(await mapLimit(selected.map(ticker => [ticker, tickers[ticker]]), requestLimit, async ([ticker, symbol]) =>  {
     try  {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1m`; const response = await fetch(url,  {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d&interval=1m`; const response = await fetchWithRetry(url,  {
         headers:  {
           accept: 'application/json', 'user-agent': 'Mozilla/5.0'
         }, signal: AbortSignal.timeout(10000)
-      }); if (!response.ok) throw new Error('Quote unavailable'); const meta = (await response.json()).chart?.result?.[0]?.meta; const price = Number(meta?.regularMarketPrice); const currency = meta?.currency; const rate = currency ? await getFxRate(currency) : null; return [ticker,  {
-        price: Number.isFinite(price) && rate ? price * rate : null, currency: Number.isFinite(price) && rate ? 'PLN' : currency ?? null, asOf: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null
+      }); if (!response.ok) throw new Error('Quote unavailable'); const meta = (await response.json()).chart?.result?.[0]?.meta; const price = Number(meta?.regularMarketPrice); const currency = meta?.currency; const rate = currency ? await getFxRate(currency) : null; if (!Number.isFinite(price) || !rate) throw new Error('Quote unavailable'); return [ticker,  {
+        price: price * rate, currency: 'PLN', asOf: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null
       }];
     }
     catch  {
-      return [ticker,  {
-        price: null, currency: null, asOf: null
-      }];
+      const previous = quoteCache.get(ticker);
+      return [ticker, previous ? { ...previous.data, stale: true, staleSince: previous.staleSince ?? new Date().toISOString() } : { price: null, currency: null, asOf: null }];
     }
-  })));
-  return  {
+  }));
+  for (const [ticker, quote] of Object.entries(quotes)) {
+    if (Number.isFinite(quote.price)) quoteCache.set(ticker, { time: Date.now(), data: quote, staleSince: null });
+    else if (quote.stale) quoteCache.set(ticker, { ...quoteCache.get(ticker), staleSince: quote.staleSince });
+  }
+  const data = {
     provider: 'Yahoo Finance',
     updatedAt: new Date().toISOString(),
     quotes
   };
+  quoteResponseCache.set(cacheKey, { time: Date.now(), data });
+  return data;
 }
 function unwrapToolResult(response)  {
   const result = response?.result;
@@ -109,7 +145,7 @@ function unwrapToolResult(response)  {
   return null;
 }
 async function callPublicDividends(ticker)  {
-  const response = await fetch('https://agentrynku.pl/api/mcp',  {
+  const response = await fetchWithRetry('https://agentrynku.pl/api/mcp',  {
     method: 'POST', headers:  {
       accept: 'application/json, text/event-stream', 'content-type': 'application/json',
     }, body: JSON.stringify( {
@@ -164,7 +200,7 @@ function selectLastPaidDividend(data)  {
 async function getLastPaidDividend(ticker)  {
   const symbol = tickers[ticker];
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5y&interval=1d&events=div`;
-  const response = await fetch(url,  {
+  const response = await fetchWithRetry(url,  {
     headers:  {
       accept: 'application/json', 'user-agent': 'Mozilla/5.0'
     }, signal: AbortSignal.timeout(12000),
@@ -188,29 +224,35 @@ async function getLastPaidDividend(ticker)  {
 }
 async function fetchDividend(ticker)  {
   let publicData = null;
+  let publicError = null;
   try  {
     if (!fundTickers.has(ticker)) publicData = await callPublicDividends(ticker);
   }
-  catch  {
-    // Use Yahoo's recorded dividend events when the resolutions feed is unavailable.
+  catch (error)  {
+    publicError = error;
   }
   const approvedDividend = selectApprovedDividend(publicData);
   if (approvedDividend) return approvedDividend;
   const lastKnownPayment = selectLastPaidDividend(publicData);
   if (lastKnownPayment) return lastKnownPayment;
-  try  {
-    return await getLastPaidDividend(ticker);
-  }
-  catch  {
-    return null;
-  }
+  const dividend = await getLastPaidDividend(ticker);
+  if (publicError && !dividend) throw publicError;
+  return dividend;
 }
 async function getDividends(symbols)  {
-  const dividends = Object.fromEntries(await Promise.all(symbols.map(async (ticker) =>  {
-    const cached = dividendCache.get(ticker); if (cached && Date.now() - cached.time < dividendCacheTtl) return [ticker, cached.data]; const data = await fetchDividend(ticker); dividendCache.set(ticker,  {
-      time: Date.now(), data
-    }); return [ticker, data];
-  })));
+  const dividends = Object.fromEntries(await mapLimit(symbols, requestLimit, async ticker => {
+    const cached = dividendCache.get(ticker);
+    if (cached && Date.now() - cached.time < (cached.error ? dividendErrorCacheTtl : dividendCacheTtl)) return [ticker, cached.data];
+    try {
+      const data = await fetchDividend(ticker);
+      dividendCache.set(ticker, { time: Date.now(), data, error: false });
+      return [ticker, data];
+    } catch {
+      const data = cached?.data ?? null;
+      dividendCache.set(ticker, { time: Date.now(), data, error: true });
+      return [ticker, data];
+    }
+  }));
   return  {
     provider: 'Agent Rynku / Yahoo Finance',
     updatedAt: new Date().toISOString(),
@@ -220,9 +262,8 @@ async function getDividends(symbols)  {
 const server = http.createServer(async (req, res) =>  {
   const requestUrl = new URL(req.url, 'http://localhost'); const pathname = requestUrl.pathname; if (pathname === '/api/quotes')  {
     try  {
-      if (!cache || Date.now() - cache.time > 30000) cache =  {
-        time: Date.now(), data: await getQuotes()
-      }; return json(res, 200, cache.data);
+      const symbols = requestUrl.searchParams.has('symbols') ? requestUrl.searchParams.get('symbols').split(',').map(ticker => ticker.trim().toUpperCase()).filter(ticker => Object.hasOwn(tickers, ticker)) : Object.keys(tickers);
+      return json(res, 200, await getQuotes(symbols));
     }
     catch  {
       return json(res, 502,  {
@@ -270,9 +311,12 @@ const server = http.createServer(async (req, res) =>  {
   }
   if (pathname === '/' || pathname === '/index.html')  {
     try  {
+      const html = (await readFile(path.join(__dirname, 'index.html'), 'utf8')).replace(/(src|href)="(company-logos\.js|app\.css|app\.js|analysis\.js|simulation\.js|tutorial\.js)(?:\?v=[^"]*)?"/g, `$1="$2?v=${assetVersion}"`);
       res.writeHead(200,  {
-        'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'
-      }); return res.end(await readFile(path.join(__dirname, 'index.html')));
+        'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
+        'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+        'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer'
+      }); return res.end(html);
     }
     catch  {
       return json(res, 500,  {
@@ -307,6 +351,8 @@ if (require.main === module)  {
 module.exports =  {
   callPublicDividends,
   dividendCache,
+  quoteCache,
+  quoteResponseCache,
   fetchDividend,
   getQuotes,
   getDividends,

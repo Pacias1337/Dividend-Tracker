@@ -8,13 +8,14 @@ Dividend Tracker to prosty kalkulator dywidend i tracker portfela na IKE. Użytk
 
 Skąd pochodzą dane:
 
-- **Ceny akcji**: Yahoo Finance, endpoint `/api/quotes` (bufor w pamięci serwera 30 sekund).
-- **Dywidendy**: endpoint `/api/dividends?symbols=PZU,PEO` (bufor w pamięci serwera 6 godzin). Źródła są sprawdzane po kolei, pierwsze, które coś zwróci, wygrywa:
+- **Ceny akcji**: Yahoo Finance, endpoint `/api/quotes` (bufor per zestaw symboli w pamięci serwera 30 sekund). Parametr `symbols=PZU,PEO` ogranicza pobieranie do tych tickerów; bez parametru pobierany jest cały katalog. Po awarii zwracany jest ostatni dobry kurs z `stale: true` i `staleSince`.
+- **Dywidendy**: endpoint `/api/dividends?symbols=PZU,PEO` (bufor w pamięci serwera 6 godzin dla odpowiedzi, 5 minut dla błędów źródeł). Źródła są sprawdzane po kolei, pierwsze, które coś zwróci, wygrywa:
   1. Agent Rynku (publiczne uchwały WZA): zatwierdzona dywidenda z płatnością w bieżącym roku (`status: 'approved'`),
   2. Agent Rynku: ostatnia wypłacona dywidenda (`status: 'last-paid'`),
   3. Yahoo Finance: zdarzenia dywidendowe z ostatnich 5 lat (`status: 'last-paid'`),
   4. brak danych: serwer zwraca `null`, a aplikacja zostaje przy wartości z tablicy `companies`.
 - **Wartości zapasowe**: pola `dividend` i `year` w tablicy `companies` w `app.js` to tylko wartość domyślna, używana, gdy żadne źródło nie odpowie. Po pobraniu danych aplikacja nadpisuje je tym, co zwrócił serwer.
+- Pobieranie notowań i dywidend ogranicza równoległość do czterech zapytań i ponawia raz błędy sieciowe oraz HTTP 5xx. Strona ma nagłówki CSP, `nosniff` i `no-referrer`; CSP dopuszcza style inline używane przez istniejący interfejs.
 - **Własna dywidenda użytkownika**: pozycja w portfelu dostaje `year: 'własna'`, gdy użytkownik wpisze kwotę inną niż ta zapisana w `companies`. Pobieranie dywidend nie może takiej kwoty nadpisywać.
 
 ## Stack

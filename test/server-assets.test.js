@@ -1,6 +1,16 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { findGusCsvUrl, getQuotes, parseGusInflation, server } = require('../server');
+const { findGusCsvUrl, getQuotes, parseGusInflation, quoteCache, quoteResponseCache, server } = require('../server');
+
+function request(path) {
+  return new Promise(resolve => {
+    let status, headers, body;
+    server.emit('request', { url: path }, {
+      writeHead(code, values) { status = code; headers = values; },
+      end(value) { body = value; resolve({ status, headers, body: body.toString() }); },
+    });
+  });
+}
 
 test('serwer udostępnia moduły analizy, symulatora i samouczka jako JavaScript', async () => {
   for (const [path, marker] of [['analysis.js', 'DividendAnalysis'], ['simulation.js', 'IkeSimulation'], ['tutorial.js', 'AppTutorial']]) {
@@ -14,6 +24,36 @@ test('serwer udostępnia moduły analizy, symulatora i samouczka jako JavaScript
     assert.equal(status, 200, path);
     assert.match(headers['content-type'], /text\/javascript/);
     assert.match(body.toString(), new RegExp(marker));
+  }
+});
+
+test('strona ustawia nagłówki bezpieczeństwa i wersjonuje zasoby', async () => {
+  const { status, headers, body } = await request('/');
+  assert.equal(status, 200);
+  assert.match(headers['content-security-policy'], /default-src 'self'/);
+  assert.equal(headers['x-content-type-options'], 'nosniff');
+  assert.equal(headers['referrer-policy'], 'no-referrer');
+  assert.match(body, /company-logos\.js\?v=[a-f0-9]{10}/);
+  assert.match(body, /href="data:image\/svg\+xml,/);
+});
+
+test('endpoint notowań ogranicza wynik do symboli z parametru', async () => {
+  const originalFetch = global.fetch;
+  quoteCache.clear();
+  quoteResponseCache.clear();
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ chart: { result: [{ meta: { currency: 'PLN', regularMarketPrice: 42, regularMarketTime: 1792674000 } }] } }),
+  });
+  try {
+    const { status, body } = await request('/api/quotes?symbols=PZU');
+    assert.equal(status, 200);
+    assert.deepEqual(Object.keys(JSON.parse(body).quotes), ['PZU']);
+  } finally {
+    global.fetch = originalFetch;
+    quoteCache.clear();
+    quoteResponseCache.clear();
   }
 });
 

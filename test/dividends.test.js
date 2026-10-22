@@ -5,7 +5,10 @@ const {
   callPublicDividends,
   dividendCache,
   getDividends,
+  getQuotes,
   getLastPaidDividend,
+  quoteCache,
+  quoteResponseCache,
   selectApprovedDividend,
   selectLastPaidDividend,
 } = require('../server');
@@ -140,4 +143,91 @@ test('caches dividend responses for subsequent requests', async () => {
   assert.equal(second.dividends.PZU.amount, 4.8);
   assert.equal(calls, 1);
   dividendCache.clear();
+});
+
+test('does not cache a provider failure as a six-hour absence and keeps the last good dividend', async () => {
+  dividendCache.clear();
+  const year = new Date().getFullYear();
+  global.fetch = async () => ({
+    ok: true,
+    headers: { get: () => 'application/json' },
+    text: async () => JSON.stringify(mcpResponse({ events: [dividendEvent(4, `${year}-06-10T00:00:00.000Z`)] })),
+  });
+  const good = (await getDividends(['PZU'])).dividends.PZU;
+  dividendCache.get('PZU').time = 0;
+  global.fetch = async () => { throw new Error('network down'); };
+  const stale = (await getDividends(['PZU'])).dividends.PZU;
+  assert.deepEqual(stale, good);
+  assert.equal(dividendCache.get('PZU').error, true);
+  assert.ok(dividendCache.get('PZU').time > Date.now() - 60_000);
+  dividendCache.clear();
+});
+
+test('caches a confirmed no-dividend result for the normal duration', async () => {
+  dividendCache.clear();
+  global.fetch = async url => url.includes('agentrynku') ? {
+    ok: true,
+    headers: { get: () => 'application/json' },
+    text: async () => JSON.stringify(mcpResponse({ events: [] })),
+  } : {
+    ok: true,
+    json: async () => ({ chart: { result: [{ meta: { currency: 'PLN' }, events: { dividends: {} } }] } }),
+  };
+  assert.equal((await getDividends(['PZU'])).dividends.PZU, null);
+  assert.equal(dividendCache.get('PZU').error, false);
+  dividendCache.clear();
+});
+
+test('limits concurrent dividend provider requests to four', async () => {
+  dividendCache.clear();
+  let active = 0;
+  let maximum = 0;
+  const year = new Date().getFullYear();
+  global.fetch = async () => {
+    active++;
+    maximum = Math.max(maximum, active);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    active--;
+    return {
+      ok: true,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify(mcpResponse({ events: [dividendEvent(1, `${year}-06-10T00:00:00.000Z`)] })),
+    };
+  };
+  await getDividends(['PZU', 'PEO', 'ALR', 'ACP', 'BUD', 'DOM', 'GPW', 'KTY']);
+  assert.equal(maximum, 4);
+  dividendCache.clear();
+});
+
+test('retries a failed Yahoo quote request once and returns the last good quote as stale', async () => {
+  quoteCache.clear();
+  quoteResponseCache.clear();
+  quoteCache.set('PZU', {
+    time: Date.now() - 60_000,
+    data: { price: 42, currency: 'PLN', asOf: '2026-10-22T09:00:00.000Z' },
+    staleSince: null,
+  });
+  let calls = 0;
+  global.fetch = async () => { calls++; return { status: 503, ok: false }; };
+  const result = await getQuotes(['PZU']);
+  assert.equal(calls, 2);
+  assert.equal(result.quotes.PZU.price, 42);
+  assert.equal(result.quotes.PZU.stale, true);
+  assert.ok(result.quotes.PZU.staleSince);
+  quoteCache.clear();
+  quoteResponseCache.clear();
+});
+
+test('returns quotes only for the requested symbols', async () => {
+  quoteCache.clear();
+  quoteResponseCache.clear();
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ chart: { result: [{ meta: { currency: 'PLN', regularMarketPrice: 42, regularMarketTime: 1792674000 } }] } }),
+  });
+  const result = await getQuotes(['PZU']);
+  assert.deepEqual(Object.keys(result.quotes), ['PZU']);
+  quoteCache.clear();
+  quoteResponseCache.clear();
 });

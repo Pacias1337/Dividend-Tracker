@@ -98,6 +98,6 @@ pnpm run build
 
 Portfel nie jest wysyłany na serwer. Aby przenieść go na inny komputer, zapisz kopię JSON w ustawieniach aplikacji i zaimportuj ją na drugim urządzeniu.
 
-Kursy akcji są pobierane z Yahoo Finance. Kwoty dywidend pochodzą z publicznych uchwał WZA udostępnianych przez Agent Rynku; jeśli nie ma zatwierdzonej uchwały z bieżącego roku, aplikacja sprawdza ostatnią uchwaloną wypłatę, a następnie historię dywidend Yahoo Finance. Dane są buforowane lokalnie przez serwer przez maksymalnie sześć godzin.
+Kursy akcji są pobierane z Yahoo Finance. Kwoty dywidend pochodzą z publicznych uchwał WZA udostępnianych przez Agent Rynku; jeśli nie ma zatwierdzonej uchwały z bieżącego roku, aplikacja sprawdza ostatnią uchwaloną wypłatę, a następnie historię dywidend Yahoo Finance. Odpowiedzi są buforowane lokalnie przez serwer do sześciu godzin, a błędy źródeł przez pięć minut. Notowania mają 30-sekundowy cache; po chwilowej awarii serwer zwraca ostatnią dobrą cenę z oznaczeniem, że jest nieaktualna. Aplikacja pobiera kursy pozycji z portfela i cały katalog po otwarciu wyboru instrumentu.
 
 Brak danych w źródle nie oznacza, że spółka nie wypłaca dywidendy. Yahoo Finance może udostępniać opóźnione notowania lub czasowo nie zwracać części kursów; aplikacja nie gwarantuje danych w czasie rzeczywistym.

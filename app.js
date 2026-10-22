@@ -1051,7 +1051,7 @@ function togglePicker(open) {
   trigger.setAttribute('aria-expanded',String(expanded));
   list.classList.toggle('hidden',!expanded);
   modal.classList.toggle('picker-open',expanded);
-  if(expanded)document.querySelector('#companySearch').focus()
+  if(expanded){document.querySelector('#companySearch').focus();refreshPrices(false,true)}
 }
 function openForm(ticker=null) {
   editTicker=ticker;
@@ -1255,15 +1255,18 @@ document.querySelector('#quarterRows').addEventListener('change',event=>{
 document.querySelectorAll('.period-tab').forEach(button=>button.addEventListener('click',()=> {
   statsPeriod=button.dataset.period;renderStats()
 }));
-async function refreshPrices(showToast=false) {
+async function refreshPrices(showToast=false,allCompanies=false) {
+  if(!allCompanies&&!portfolio.length)return;
   const button=document.querySelector('#refresh'),
   status=document.querySelector('#dataStatus');
   button.disabled=true;
   button.textContent='Pobieram…';
-  status.textContent='Pobieram kursy GPW…';
+  if(!allCompanies)status.textContent='Pobieram kursy GPW…';
   let updated=0,latestQuoteTime=0;
   try {
-    const response=await fetch('/api/quotes', {
+    const symbols=allCompanies?[]:portfolio.map(holding=>holding.ticker);
+    const endpoint=allCompanies?'/api/quotes':`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`;
+    const response=await fetch(endpoint, {
       cache: 'no-store'
     });
     if(!response.ok)throw Error();
@@ -1277,7 +1280,8 @@ async function refreshPrices(showToast=false) {
         updated++
       }
     }
-    if(data.updatedAt)status.textContent=updated?`Kursy: Yahoo Finance · ostatnie notowania ${new Date(latestQuoteTime||Date.parse(data.updatedAt)).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}. Dane mogą być opóźnione.`: 'Yahoo Finance nie zwróciło teraz kursów GPW; spróbuję ponownie za minutę.';
+    const staleQuote=Object.values(data.quotes||{}).find(quote=>quote?.stale);
+    if(data.updatedAt&&!allCompanies)status.textContent=staleQuote?Number.isFinite(Date.parse(staleQuote.asOf))?`Kursy sprzed ${Math.max(1,Math.floor((Date.now()-Date.parse(staleQuote.asOf))/60000))} min · źródło chwilowo niedostępne.`:'Ostatnie kursy są nieaktualne · źródło chwilowo niedostępne.':updated?`Kursy: Yahoo Finance · ostatnie notowania ${new Date(latestQuoteTime||Date.parse(data.updatedAt)).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}. Dane mogą być opóźnione.`: 'Yahoo Finance nie zwróciło teraz kursów GPW; spróbuję ponownie za minutę.';
     else throw Error()
   }
   catch {
