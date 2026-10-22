@@ -8,7 +8,7 @@
     { title: 'Dziennik wpłat', text: 'Dodaj datę, wpłatę od poprzedniego wpisu oraz wartość konta z tego dnia.', target: '#depositTitle', view: 'stats' },
     { title: 'Jeśli IKE prowadzisz już od lat', text: 'Zacznij od najstarszej dostępnej daty. W pierwszym wpisie podaj łączną sumę wpłat do tego dnia i wartość IKE z tego dnia. W kolejnych wpisach wpisuj wpłaty od poprzedniej daty oraz stan konta. Uzupełniaj historię od najstarszego punktu do najnowszego.', target: '#addDeposit', view: 'stats' },
     { title: 'Analiza wpłat', text: 'Zapisuj wpłaty i stan rachunku, aby śledzić wynik portfela w czasie.', target: '#analysisTitle', view: 'stats' },
-    { title: 'Symulator IKE', text: 'Porównaj trzy orientacyjne scenariusze. Możesz ograniczyć wpłaty do limitu z reguł symulatora; warunki wypłaty są uproszczone.', target: '#ikeRulesTitle', view: 'stats' },
+    { title: 'Symulator IKE', text: 'Porównaj trzy orientacyjne scenariusze. Możesz ograniczyć wpłaty do limitu z reguł symulatora; warunki wypłaty są uproszczone.', target: '#ikeRulesTitle', view: 'simulation' },
     { title: 'Ustawienia i kopia', text: 'W ustawieniach zapiszesz kopię JSON albo odczytasz ją na innym urządzeniu.', target: '#settingsToggle', view: 'stats' },
     { title: 'To wszystko', text: 'Możesz wrócić do samouczka w dowolnej chwili przyciskiem „Samouczek”.', target: '#startTour', view: 'stats' },
   ];

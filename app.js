@@ -805,6 +805,7 @@ async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) 
   }
 }
 function logoMarkup(ticker,className) {
+  if(getCompany(ticker)?.assetType==='etf')return`<span class="${className} etf-logo" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 18V6m0 12h16M7 14l4-4 3 2 5-6"/><path d="M15 6h4v4"/></svg></span>`;
   const logo=window.companyLogos?.[ticker];
   return`<span class="${className}" aria-hidden="true">${logo?`<img src="${logo}" alt="" loading="lazy">`:`<span class="ticker-fallback">${ticker}</span>`}</span>`
 }
@@ -1239,14 +1240,16 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
   });
 });
 function setView(view) {
-  const stats=view==='stats'||view==='analysis';
-  document.querySelector('#portfolioView').classList.toggle('hidden',stats);
-  document.querySelector('#statsView').classList.toggle('hidden',!stats);
-  document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats));
-  document.querySelector('#statsTab').setAttribute('aria-selected',String(stats));
-  document.querySelector('#portfolioTab').tabIndex=stats?-1:0;
-  document.querySelector('#statsTab').tabIndex=stats?0:-1;
-  if(stats){renderStats();renderAnalysis()}
+  if(view==='analysis')view='stats';
+  const views=['portfolio','stats','simulation'];
+  document.querySelector('#portfolioView').classList.toggle('hidden',view!=='portfolio');
+  document.querySelector('#statsView').classList.toggle('hidden',view!=='stats');
+  document.querySelector('#simulationView').classList.toggle('hidden',view!=='simulation');
+  views.forEach(name=>{
+    const tab=document.querySelector(`#${name}Tab`);
+    if(tab){tab.setAttribute('aria-selected',String(name===view));tab.tabIndex=name===view?0:-1}
+  });
+  if(view==='stats'){renderStats();renderAnalysis()}
 }
 const themeToggle=document.querySelector('#themeToggle');
 const savedTheme=safeStorage.get('dividend-ike-theme');
@@ -1262,6 +1265,7 @@ setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));
 document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));
+document.querySelector('#simulationTab').addEventListener('click',()=>setView('simulation'));
 document.querySelector('.view-tabs').addEventListener('keydown',event=>{
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
   event.preventDefault();const tabs=[...document.querySelectorAll('.view-tab')],index=tabs.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
@@ -1363,7 +1367,7 @@ async function refreshPrices(showToast=false,allCompanies=false) {
       else if(!marketOpen)setMarketStatus(status,'closed',`Rynek jest poza typowymi godzinami sesji. ${quoteLabel}.`);
       else if(updated)setMarketStatus(status,'fresh',`Kursy: Yahoo Finance · ${quoteLabel}. Dane mogą być opóźnione.`);
       else setMarketStatus(status,'unavailable','Źródło nie zwróciło teraz kursów; spróbuję ponownie za minutę.');
-    } else throw Error()
+    } else if(!data.updatedAt) throw Error()
   }
   catch {
     setMarketStatus(status,'error','Nie udało się pobrać kursów. Uruchom aplikację przez lokalny serwer (instrukcja w README).')
@@ -1459,13 +1463,13 @@ render();
 updateBackupDate();
 refreshDividends();
 refreshInflation();
-refreshPrices();
+refreshPrices(false,!portfolio.length);
 setInterval(()=> {
-  if(!document.hidden)refreshPrices()
+  if(!document.hidden)refreshPrices(false,!portfolio.length)
 },60_000);
 setInterval(()=> {
   if(!document.hidden)refreshDividends()
 },6*60*60*1000);
 document.addEventListener('visibilitychange',()=> {
-  if(!document.hidden)refreshPrices()
+  if(!document.hidden)refreshPrices(false,!portfolio.length)
 });
