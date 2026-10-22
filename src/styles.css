@@ -2610,3 +2610,9 @@ html {scroll-behavior:smooth}
 .view-panel-enter {animation:designer-enter .62s var(--ease-out-expo) both}
 @keyframes designer-enter {from{opacity:0;transform:translateY(14px) scale(.994);filter:blur(4px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.panel,.stat,.stats-card,.view-tabs .view-tab,.period-tab,.add,.refresh,.backup-button{transition:none}.view-panel-enter{animation:none}.stat.primary::after{display:none}}
+.row-actions {display:flex;justify-content:flex-end;align-items:center;gap:clamp(12px,2.4vw,30px);min-width:132px;padding-right:clamp(8px,2vw,24px)}
+.row-actions .edit,.row-actions .delete {width:40px;height:40px;flex:0 0 40px}
+.row-actions .action-icon {width:18px;height:18px}
+.analysis-tablewrap {scrollbar-width:thin;overscroll-behavior-inline:contain}
+@media(max-width:760px){.analysis-tablewrap table{min-width:860px}.row-actions{min-width:110px;gap:12px;padding-right:8px}.view-tabs{width:100%}}
+@media(max-width:520px){.shell{padding-right:12px;padding-left:12px}.view-tabs .view-tab{font-size:11px;padding:8px 3px}.row-actions{min-width:100px;gap:8px}.row-actions .edit,.row-actions .delete{width:36px;height:36px;flex-basis:36px}.panelhead{gap:12px}.period-tabs{margin-left:0}}
