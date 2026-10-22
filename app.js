@@ -1,3 +1,4 @@
+const escapeHtml=AppCore.escapeHtml;
 const companies=[  {
   ticker: 'PZU',
   name: 'PZU',
@@ -563,14 +564,14 @@ const companies=[  {
  { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
 ];
 const defaultPortfolio=[];
-let portfolio=JSON.parse(localStorage.getItem('dividend-ike-portfolio')||'null')||defaultPortfolio;
+let portfolio=JSON.parse(safeStorage.get('dividend-ike-portfolio')||'null')||defaultPortfolio;
 const emptyStartupTickers=['PZU','PEO','ACP','GPW'];
 if(Array.isArray(portfolio)&&portfolio.length===emptyStartupTickers.length&&emptyStartupTickers.every(ticker=>portfolio.some(item=>item?.ticker===ticker&&item.shares===0))) {
   portfolio=[];
-  localStorage.setItem('dividend-ike-portfolio','[]');
+  safeStorage.set('dividend-ike-portfolio','[]');
 }
-let prices=JSON.parse(localStorage.getItem('dividend-ike-prices')||'{}');
-let priceTimes=JSON.parse(localStorage.getItem('dividend-ike-price-times')||'{}');
+let prices=JSON.parse(safeStorage.get('dividend-ike-prices')||'{}');
+let priceTimes=JSON.parse(safeStorage.get('dividend-ike-price-times')||'{}');
 if(!Object.keys(priceTimes).length)prices= {
 };
 function migrateSantanderData() {
@@ -596,26 +597,27 @@ function migrateSantanderData() {
     ...item,ticker: 'EBP'
   }
   : item);
-  localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
-  localStorage.setItem('dividend-ike-prices',JSON.stringify(prices));
-  localStorage.setItem('dividend-ike-price-times',JSON.stringify(priceTimes));
-  localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))
+  safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
+  safeStorage.set('dividend-ike-prices',JSON.stringify(prices));
+  safeStorage.set('dividend-ike-price-times',JSON.stringify(priceTimes));
+  safeStorage.set('dividend-ike-activity',JSON.stringify(portfolioActivity))
 }
 let assetFilter='stock',
 editTicker=null,
+formOpener=null,
 sortDirection='asc',
 portfolioSort= {
   column: null,
   direction: 'asc'
 };
-let portfolioHistory=JSON.parse(localStorage.getItem('dividend-ike-history')||'[]');
+let portfolioHistory=JSON.parse(safeStorage.get('dividend-ike-history')||'[]');
 if(!Array.isArray(portfolioHistory))portfolioHistory=[];
-let portfolioActivity=JSON.parse(localStorage.getItem('dividend-ike-activity')||'[]');
+let portfolioActivity=JSON.parse(safeStorage.get('dividend-ike-activity')||'[]');
 if(!Array.isArray(portfolioActivity))portfolioActivity=[];
 migrateSantanderData();
 let statsPeriod='week';
-let historyStartedAt=localStorage.getItem('dividend-ike-history-started')||new Date().toISOString();
-localStorage.setItem('dividend-ike-history-started',historyStartedAt);
+let historyStartedAt=safeStorage.get('dividend-ike-history-started')||new Date().toISOString();
+safeStorage.set('dividend-ike-history-started',historyStartedAt);
 const depositStorageKey='dividend-ike-deposits',inflationStorageKey='dividend-ike-inflation',depositRateStorageKey='dividend-ike-deposit-rate';
 const simulationStorageKey='dividend-ike-simulation';
 const emptySimulation=()=>({mode:null,existing:{value:null,deposits:null,profit:null},plan:{monthlyDeposit:null,annualReturnPct:null,years:null,birthYear:null,firstDepositYear:null,annualInflationPct:null},withdrawalAmount:null,annualLimit:IkeSimulation.IKE_RULES.annualLimit,enabled:false,capToLimit:false});
@@ -625,7 +627,7 @@ function validSimulationState(value) {
 }
 function readSimulationState() {
   try {
-    const saved=JSON.parse(localStorage.getItem(simulationStorageKey));
+    const saved=JSON.parse(safeStorage.get(simulationStorageKey));
     if(!validSimulationState(saved))return emptySimulation();
     const defaults=emptySimulation();
     return {mode:saved.mode,enabled:saved.enabled,capToLimit:saved.capToLimit??false,annualLimit:saved.annualLimit,withdrawalAmount:saved.withdrawalAmount,existing:Object.fromEntries(Object.keys(defaults.existing).map(key=>[key,saved.existing[key]??null])),plan:Object.fromEntries(Object.keys(defaults.plan).map(key=>[key,saved.plan[key]??null]))};
@@ -634,7 +636,7 @@ function readSimulationState() {
 }
 const simulationState=readSimulationState();
 function readAnalysisStorage(key,fallback) {
-  try { return JSON.parse(localStorage.getItem(key)??JSON.stringify(fallback)) }
+  try { return JSON.parse(safeStorage.get(key)??JSON.stringify(fallback)) }
   catch { return fallback }
 }
 let analysisEntries=DividendAnalysis.normalizeEntries(readAnalysisStorage(depositStorageKey,[]));
@@ -642,23 +644,21 @@ let analysisInflation=readAnalysisStorage(inflationStorageKey,{});
 let monthlyInflation={};
 if(!analysisInflation||typeof analysisInflation!=='object'||Array.isArray(analysisInflation))analysisInflation={};
 analysisInflation=Object.fromEntries(Object.entries(analysisInflation).filter(([key,value])=>/^\d{4}-Q[1-4]$/.test(key)&&Number.isFinite(value)&&value>=-1&&value<=10));
-const savedDepositRate=localStorage.getItem(depositRateStorageKey);
+const savedDepositRate=safeStorage.get(depositRateStorageKey);
 let depositRate=savedDepositRate===null?0.03:Number(savedDepositRate);
 if(!Number.isFinite(depositRate)||depositRate<0||depositRate>10)depositRate=0.03;
 function saveAnalysisStorage() {
-  localStorage.setItem(depositStorageKey,JSON.stringify(analysisEntries));
-  localStorage.setItem(inflationStorageKey,JSON.stringify(analysisInflation));
-  localStorage.setItem(depositRateStorageKey,String(depositRate));
+  safeStorage.set(depositStorageKey,JSON.stringify(analysisEntries));
+  safeStorage.set(inflationStorageKey,JSON.stringify(analysisInflation));
+  safeStorage.set(depositRateStorageKey,String(depositRate));
 }
-const money=n=>new Intl.NumberFormat('pl-PL', {
-  style: 'currency',currency: 'PLN',minimumFractionDigits:2,maximumFractionDigits:2
-}).format(n);
+const money=AppCore.money;
 const roundMoney=value=>Math.round((value+Number.EPSILON)*100)/100;
 const roundDividend=value=>Number((Math.round((value+Number.EPSILON)*100)/100).toFixed(2));
 portfolio.forEach(holding=>{if(Number.isFinite(holding.dividend))holding.dividend=roundDividend(holding.dividend)});
-localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
+safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
 const getCompany=t=>companies.find(c=>c.ticker===t);
-const percent=value=>value===null||!Number.isFinite(value)?'—':`${(value*100).toLocaleString('pl-PL',{maximumFractionDigits:2})}%`;
+const percent=AppCore.percent;
 const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
 let showAllDepositEntries=false,showAllQuarterRows=false;
 function renderAnalysis() {
@@ -710,8 +710,8 @@ function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   const left=130,right=740,top=22,bottom=210,x=index=>rows.length===1?(left+right)/2:left+(right-left)*index/(rows.length-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),format=asPercent?percent:money;
   let markup='';
   for(let index=0;index<3;index++){const value=high-(high-low)*index/2,pos=top+(bottom-top)*index/2;markup+=`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" text-anchor="end" x="112" y="${pos+4}">${format(value)}</text>`}
-  for(const item of series){let segment=[];const flush=()=>{if(segment.length)markup+=`<polyline class="analysis-series ${item.className}" points="${segment.join(' ')}"/>`;segment=[]};item.values.forEach((value,index)=>{if(!Number.isFinite(value)){flush();return}const cx=x(index),cy=y(value);segment.push(`${cx},${cy}`);markup+=`<circle class="analysis-point ${item.className}" cx="${cx}" cy="${cy}" r="4"><title>${rows[index].date} · ${item.label}: ${format(value)}</title></circle>`});flush()}
-  markup+=`<text class="history-label" x="${left}" y="244">${rows[0].date}</text><text class="history-label" text-anchor="end" x="${right}" y="244">${rows.at(-1).date}</text><text class="history-label" text-anchor="middle" x="420" y="258">Data</text><text class="history-label" text-anchor="middle" transform="translate(15 116) rotate(-90)">${asPercent?'Stopa (%)':'Kwota (zł)'}</text>`;svg.innerHTML=markup;
+  for(const item of series){let segment=[];const flush=()=>{if(segment.length)markup+=`<polyline class="analysis-series ${item.className}" points="${segment.join(' ')}"/>`;segment=[]};item.values.forEach((value,index)=>{if(!Number.isFinite(value)){flush();return}const cx=x(index),cy=y(value);segment.push(`${cx},${cy}`);markup+=`<circle class="analysis-point ${item.className}" cx="${cx}" cy="${cy}" r="4"><title>${escapeHtml(rows[index].date)} · ${escapeHtml(item.label)}: ${format(value)}</title></circle>`});flush()}
+  markup+=`<text class="history-label" x="${left}" y="244">${escapeHtml(rows[0].date)}</text><text class="history-label" text-anchor="end" x="${right}" y="244">${escapeHtml(rows.at(-1).date)}</text><text class="history-label" text-anchor="middle" x="420" y="258">Data</text><text class="history-label" text-anchor="middle" transform="translate(15 116) rotate(-90)">${asPercent?'Stopa (%)':'Kwota (zł)'}</text>`;svg.innerHTML=markup;
 }
 async function refreshInflation() {
   try {
@@ -758,9 +758,9 @@ async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) 
       changed=true;
     }
     if(changed) {
-      localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
+      safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
       render();
-      if(!document.querySelector('#modalback').classList.contains('hidden'))options();
+      if(document.querySelector('#modalback').open)options();
     }
   }
   catch {
@@ -805,41 +805,35 @@ function render() {
   rows.innerHTML='';
   document.querySelector('#count').textContent=`(${portfolio.length})`;
   document.querySelector('#empty').classList.toggle('hidden',portfolio.length>0);
-  let annual=0,
-  value=0,
-  priced=0;
+  const totals=AppCore.summarizePortfolio(portfolio,prices,Object.fromEntries(companies.map(company=>[company.ticker,company])));
   for(const holding of sortedPortfolio()) {
     const c=getCompany(holding.ticker);
     if(!c)continue;
     const row=document.createElement('tr');
     const price=prices[c.ticker];
     const dividend=holding.dividend??c.dividend;
-    const income=holding.shares*dividend;
-    annual+=income;
-    if(price) {
-      value+=holding.shares*price;
-      priced+=holding.shares*price
-    }
-    const yieldRate=price>0?dividend/price*100: null,
+    const calculations=AppCore.calculateHolding(holding.shares,price,dividend),
+    income=calculations.income,
+    yieldRate=calculations.yieldRate,
     warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>': '';
-    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${c.name}</strong><small>${c.sector}</small></span></div></td><td class="num">${holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6})}</td><td class="num" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}">${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${c.name}" title="Edytuj" data-edit="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${c.name}" title="Usuń" data-delete="${c.ticker}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
+    row.innerHTML=`<td><div class="company">${logoMarkup(c.ticker,'ticker')}<span><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml(c.sector)}</small></span></div></td><td class="num">${escapeHtml(holding.shares.toLocaleString('pl-PL',{maximumFractionDigits:6}))}</td><td class="num" title="${escapeHtml(priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania')}">${price?money(price):'—'}</td><td class="num">${price?money(holding.shares*price):'—'}</td><td class="num" title="${escapeHtml(`${c.dividendStatus==='approved'?'Zatwierdzona dywidenda':c.dividendStatus==='last-paid'?'Ostatnia znana wypłata':'Wartość z danych aplikacji'}${c.dividendAsOf?`: ${new Date(c.dividendAsOf).toLocaleDateString('pl-PL')}`:''}`)}">${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł</td><td class="num">${money(income)}</td><td class="yield">${yieldRate!=null?yieldRate.toFixed(2).replace('.',',')+'%'+warning:'—'}</td><td><button type="button" class="edit" aria-label="Edytuj pozycję ${escapeHtml(c.name)}" title="Edytuj" data-edit="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button> <button type="button" class="delete" aria-label="Usuń ${escapeHtml(c.name)}" title="Usuń" data-delete="${escapeHtml(c.ticker)}"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></td>`;
     rows.append(row)
   }
-  document.querySelector('#annual').textContent=money(annual);
-  document.querySelector('#taxSavings').textContent=money(annual*.19);
-  document.querySelector('#value').textContent=priced?money(value): '—';
-  document.querySelector('#value-sub').textContent=priced?'Na podstawie ostatnich pobranych kursów': 'Dodaj liczbę akcji i sprawdź kurs';
-  document.querySelector('#yield').textContent=value?`${(annual/value*100).toFixed(2).replace('.',',')}%`: '—';
+  document.querySelector('#annual').textContent=money(totals.annual);
+  document.querySelector('#taxSavings').textContent=money(totals.annual*.19);
+  document.querySelector('#value').textContent=totals.value?money(totals.value): '—';
+  document.querySelector('#value-sub').textContent=totals.value?'Na podstawie ostatnich pobranych kursów': 'Dodaj liczbę akcji i sprawdź kurs';
+  document.querySelector('#yield').textContent=totals.value?`${(totals.annual/totals.value*100).toFixed(2).replace('.',',')}%`: '—';
   renderSectorChart();
   renderStats();
-  localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
+  safeStorage.set('dividend-ike-portfolio',JSON.stringify(portfolio));
 }
 function recordActivity(action,ticker,shares,valueChange=null) {
   portfolioActivity.unshift( {
     at: new Date().toISOString(),action,ticker,shares,valueChange:Number.isFinite(valueChange)?roundMoney(valueChange):null
   });
   portfolioActivity=portfolioActivity.slice(0,500);
-  localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))
+  safeStorage.set('dividend-ike-activity',JSON.stringify(portfolioActivity))
 }
 function saveHistorySnapshot(allowEmpty=false) {
   const active=portfolio.filter(h=>h.shares>0);
@@ -859,7 +853,7 @@ function saveHistorySnapshot(allowEmpty=false) {
   if(sameDay>=0)portfolioHistory[sameDay]=snapshot;
   else portfolioHistory.push(snapshot);
   portfolioHistory=portfolioHistory.sort((a,b)=>a.at.localeCompare(b.at)).slice(-400);
-  localStorage.setItem('dividend-ike-history',JSON.stringify(portfolioHistory))
+  safeStorage.set('dividend-ike-history',JSON.stringify(portfolioHistory))
 }
 function renderStats() {
   const currentValue=portfolio.reduce((sum,h)=>sum+(Number.isFinite(prices[h.ticker])&&prices[h.ticker]>0?h.shares*prices[h.ticker]: 0),0),
@@ -891,7 +885,7 @@ function renderStats() {
   if(points.length)renderHistoryChart(points);
   document.querySelector('#activityCount').textContent=`(${Math.min(3,portfolioActivity.length)}${portfolioActivity.length>3?` z ${portfolioActivity.length}`:''})`;
   document.querySelector('#activityEmpty').classList.toggle('hidden',portfolioActivity.length>0);
-  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,3).map(item=>`<li><span>${item.action}: ${getCompany(item.ticker)?.name||item.ticker}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek · Zmiana wartości portfela: ${Number.isFinite(item.valueChange)?`${item.valueChange>0?'+':''}${money(item.valueChange)}`:'brak danych'}</small></span><time datetime="${item.at}">${new Date(item.at).toLocaleString('pl-PL')}</time></li>`).join(''): '';
+  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,3).map(item=>`<li><span>${escapeHtml(item.action)}: ${escapeHtml(getCompany(item.ticker)?.name||item.ticker)}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek · Zmiana wartości portfela: ${Number.isFinite(item.valueChange)?`${item.valueChange>0?'+':''}${money(item.valueChange)}`:'brak danych'}</small></span><time datetime="${escapeHtml(item.at)}">${escapeHtml(new Date(item.at).toLocaleString('pl-PL'))}</time></li>`).join(''): '';
   document.querySelectorAll('.period-tab').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.period===statsPeriod)));
 }
 function renderHistoryChart(points) {
@@ -915,9 +909,9 @@ function renderHistoryChart(points) {
   2].map(i=> {
     const value=high-(high-low)*i/2,pos=top+(bottom-top)*i/2;return`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" x="0" y="${pos+4}">${money(value)}</text>`
   }).join(''),
-  dots=points.map((item,i)=>`<circle class="history-point" cx="${x(i)}" cy="${y(item.value)}" r="5"><title>${new Date(item.at).toLocaleString('pl-PL')}: ${money(item.value)}</title></circle>`).join(''),
-  start=new Date(points[0].at).toLocaleDateString('pl-PL'),
-  end=new Date(points.at(-1).at).toLocaleDateString('pl-PL');
+  dots=points.map((item,i)=>`<circle class="history-point" cx="${x(i)}" cy="${y(item.value)}" r="5"><title>${escapeHtml(new Date(item.at).toLocaleString('pl-PL'))}: ${money(item.value)}</title></circle>`).join(''),
+  start=escapeHtml(new Date(points[0].at).toLocaleDateString('pl-PL')),
+  end=escapeHtml(new Date(points.at(-1).at).toLocaleDateString('pl-PL'));
   svg.innerHTML=`${grid}<polyline class="history-line" points="${coords}"/>${dots}<text class="history-label" x="${left}" y="207">${start}</text><text class="history-label" text-anchor="end" x="${right}" y="207">${end}</text>`;
   document.querySelector('#statsChangeNote').textContent=firstSnapshotNote(points)
 }
@@ -970,11 +964,11 @@ function renderSectorChart() {
   colors=entries.map((_,i)=>palette[i%palette.length]);
   let offset=0;
   const slices=entries.map(([sector,value],i)=> {
-    const fraction=value/total,share=fraction*100,length=fraction*circumference,start=offset/circumference*360-90;offset+=length;return`<circle class="sector-slice" cx="160" cy="160" r="${radius}" fill="none" stroke="${colors[i]}" stroke-width="76" stroke-dasharray="${length} ${circumference-length}" transform="rotate(${start} 160 160)" data-sector="${sector}" data-share="${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%" data-value="${value}" data-color="${colors[i]}" tabindex="0" role="img" aria-label="${sector}: ${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%, ${money(value)}"></circle>`
+    const fraction=value/total,share=fraction*100,length=fraction*circumference,start=offset/circumference*360-90;offset+=length;return`<circle class="sector-slice" cx="160" cy="160" r="${radius}" fill="none" stroke="${colors[i]}" stroke-width="76" stroke-dasharray="${length} ${circumference-length}" transform="rotate(${start} 160 160)" data-sector="${escapeHtml(sector)}" data-share="${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%" data-value="${value}" data-color="${colors[i]}" tabindex="0" role="img" aria-label="${escapeHtml(sector)}: ${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%, ${money(value)}"></circle>`
   }).join('');
   svg.innerHTML=`${slices}<circle class="sector-hole" cx="160" cy="160" r="61"/>`;
   svg.setAttribute('aria-label','Alokacja portfela według sektorów spółek i grup ETF-ów');
-  legend.innerHTML=entries.map(([sector],i)=>`<li><span class="sector-dot" style="background:${colors[i]}"></span><span>${sector}</span></li>`).join('')
+  legend.innerHTML=entries.map(([sector],i)=>`<li><span class="sector-dot" style="background:${colors[i]}"></span><span>${escapeHtml(sector)}</span></li>`).join('')
 }
 const sectorTooltip=document.querySelector('#sectorTooltip'),
 sectorChart=document.querySelector('#sectorChart');
@@ -1032,7 +1026,7 @@ function options() {
   filtered.sort((a,b)=> {
     if(field==='name')return direction==='asc'?a.name.localeCompare(b.name,'pl'): b.name.localeCompare(a.name,'pl');const av=field==='price'?prices[a.ticker]: a.dividend,bv=field==='price'?prices[b.ticker]: b.dividend;if(av==null)return bv==null?a.name.localeCompare(b.name,'pl'): 1;if(bv==null)return-1;return direction==='asc'?av-bv: bv-av
   });
-  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${c.ticker}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${c.ticker}" title="${priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania'}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${c.name}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono instrumentów.</div>'
+  list.innerHTML=filtered.length?filtered.map(c=>`<button type="button" class="company-option" id="option-${escapeHtml(c.ticker)}" role="option" aria-selected="${document.querySelector('#company').value===c.ticker}" tabindex="-1" data-company="${escapeHtml(c.ticker)}" title="${escapeHtml(priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania')}">${logoMarkup(c.ticker,'picker-logo')}<span class="option-name">${escapeHtml(c.name)}</span><span class="option-price">${prices[c.ticker]?money(prices[c.ticker]):'—'}</span></button>`).join(''): '<div class="picker-empty">Nie znaleziono instrumentów.</div>'
 }
 function setCompany(ticker) {
   const company=getCompany(ticker);
@@ -1054,6 +1048,7 @@ function togglePicker(open) {
   if(expanded){document.querySelector('#companySearch').focus();refreshPrices(false,true)}
 }
 function openForm(ticker=null) {
+  formOpener=document.activeElement;
   editTicker=ticker;
   document.querySelector('#companySearch').value='';
   document.querySelector('#companySort').value='name';
@@ -1070,13 +1065,16 @@ function openForm(ticker=null) {
   document.querySelector('#dividend').value=h?.dividend??getCompany(company).dividend;
   setCompany(company);
   togglePicker(false);
-  document.querySelector('#modalback').classList.remove('hidden');
+  document.querySelector('#modalback').showModal();
   document.querySelector('#shares').focus()
 }
 function closeForm() {
-  document.querySelector('#modalback').classList.add('hidden');
+  const dialog=document.querySelector('#modalback');
+  if(dialog.open)dialog.close();
   togglePicker(false);
-  document.querySelector('#companyTrigger').disabled=false
+  document.querySelector('#companyTrigger').disabled=false;
+  (formOpener?.isConnected?formOpener:document.querySelector('#add'))?.focus();
+  formOpener=null
 }
 document.querySelector('#companyTrigger').addEventListener('click',()=>togglePicker());
 document.querySelector('#companySearch').addEventListener('input',options);
@@ -1126,22 +1124,15 @@ document.querySelector('#rows').closest('table').querySelector('thead').addEvent
 document.querySelector('#add').onclick=()=>openForm();
 document.querySelector('#cancel').onclick=closeForm;
 document.querySelector('#close-modal').onclick=closeForm;
-document.querySelector('#modalback').addEventListener('click',e=> {
-  if(e.target.id==='modalback')closeForm()
-});
+document.querySelector('#modalback').addEventListener('click',e=> { if(e.target===e.currentTarget)closeForm() });
+document.querySelector('#modalback').addEventListener('cancel',closeForm);
 document.querySelector('#form').addEventListener('click',e=> {
   if(!e.target.closest('#companyPicker')&&document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true')togglePicker(false)
 });
 document.addEventListener('keydown',e=> {
-  const modalOpen=!document.querySelector('#modalback').classList.contains('hidden'),dialogOpen=document.querySelector('#settingsDialog').open||document.querySelector('#depositDialog').open,isShortcut=(e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k',isSearchShortcut=e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.target.closest('input,textarea,select,[contenteditable="true"]');
+  const modalOpen=document.querySelector('#modalback').open,dialogOpen=document.querySelector('#settingsDialog').open||document.querySelector('#depositDialog').open,isShortcut=(e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k',isSearchShortcut=e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!e.target.closest('input,textarea,select,[contenteditable="true"]');
   if((isShortcut||isSearchShortcut)&&!modalOpen&&!dialogOpen) {
     e.preventDefault();openForm();togglePicker(true);return
-  }
-  if(e.key==='Escape'&&!document.querySelector('#modalback').classList.contains('hidden')) {
-    if(document.querySelector('#companyTrigger').getAttribute('aria-expanded')==='true') {
-      togglePicker(false);document.querySelector('#companyTrigger').focus()
-    }
-    else closeForm()
   }
 });
 let activeYieldTooltip=null;
@@ -1184,7 +1175,11 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
   const button = event.target.closest('[data-edit], [data-delete]'); if (!button) return; const ticker = button.dataset.edit || button.dataset.delete; if (button.dataset.edit)  {
     openForm(ticker); return;
   }
-  const holding = portfolio.find((item) => item.ticker === ticker),valueChange=Number.isFinite(prices[ticker])?-(holding?.shares||0)*prices[ticker]:null; recordActivity('Usunięto pozycję', ticker, holding?.shares || 0,valueChange); portfolio = portfolio.filter((item) => item.ticker !== ticker); saveHistorySnapshot(true); render();
+  confirmAction('Usunąć pozycję?', `Pozycja ${getCompany(ticker)?.name||ticker} zostanie usunięta z portfela.`, 'Usuń pozycję', true).then(confirmed=>{
+    if(!confirmed)return;
+    const holding=portfolio.find(item=>item.ticker===ticker),valueChange=Number.isFinite(prices[ticker])?-(holding?.shares||0)*prices[ticker]:null;
+    recordActivity('Usunięto pozycję',ticker,holding?.shares||0,valueChange);portfolio=portfolio.filter(item=>item.ticker!==ticker);saveHistorySnapshot(true);render();document.querySelector('#add').focus();
+  });
 });
 function setView(view) {
   const stats=view==='stats'||view==='analysis';
@@ -1195,13 +1190,13 @@ function setView(view) {
   if(stats){renderStats();renderAnalysis()}
 }
 const themeToggle=document.querySelector('#themeToggle');
-let darkMode=localStorage.getItem('dividend-ike-theme')==='dark';
+let darkMode=safeStorage.get('dividend-ike-theme')==='dark';
 function setTheme(dark) {
   darkMode=dark;
   document.body.classList.toggle('dark-mode',dark);
   themeToggle.setAttribute('aria-checked',String(dark));
   themeToggle.title=dark?'Włącz tryb jasny': 'Włącz tryb ciemny';
-  localStorage.setItem('dividend-ike-theme',dark?'dark': 'light')
+  safeStorage.set('dividend-ike-theme',dark?'dark': 'light')
 }
 setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
@@ -1287,8 +1282,8 @@ async function refreshPrices(showToast=false,allCompanies=false) {
   catch {
     status.textContent='Nie udało się pobrać kursów. Uruchom aplikację przez lokalny serwer (instrukcja w README).'
   }
-  localStorage.setItem('dividend-ike-prices',JSON.stringify(prices));
-  localStorage.setItem('dividend-ike-price-times',JSON.stringify(priceTimes));
+  safeStorage.set('dividend-ike-prices',JSON.stringify(prices));
+  safeStorage.set('dividend-ike-price-times',JSON.stringify(priceTimes));
   if(updated)saveHistorySnapshot();
   render();
   for(const c of companies) {
@@ -1299,27 +1294,24 @@ async function refreshPrices(showToast=false,allCompanies=false) {
       option.title=priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`: 'Brak czasu notowania'
     }
   }
-  if(!document.querySelector('#modalback').classList.contains('hidden'))setCompany(document.querySelector('#company').value);
+  if(document.querySelector('#modalback').open)setCompany(document.querySelector('#company').value);
   button.disabled=false;
   button.textContent='↻  Odśwież kursy';
   if(showToast&&updated)toast('Kursy odświeżone');
 }
 function validateBackup(backup) {
-  const data=backup?.data;
-  if(backup?.app!=='Dividend Tracker'||backup.version!==1||!data||!Array.isArray(data.portfolio)||data.portfolio.length>companies.length+1||!Array.isArray(data.history)||data.history.length>400||!Array.isArray(data.activity)||data.activity.length>500||!data.prices||typeof data.prices!=='object'||!data.priceTimes||typeof data.priceTimes!=='object'||!['light','dark'].includes(data.theme)||!Number.isFinite(Date.parse(data.historyStartedAt)))return false;
-  const known=new Set([...companies.map(c=>c.ticker),'SPL']),
-  seen=new Set(),
-  validDate=value=>typeof value==='string'&&Number.isFinite(Date.parse(value));
-  if(!data.portfolio.every(h=>h&&known.has(h.ticker)&&!seen.has(h.ticker)&&seen.add(h.ticker)&&Number.isFinite(h.shares)&&h.shares>=0&&(h.dividend==null||Number.isFinite(h.dividend)&&h.dividend>=0)))return false;
-  if(!data.history.every(h=>h&&validDate(h.at)&&Number.isFinite(h.value)&&h.value>=0&&Number.isFinite(h.annualIncome)&&h.annualIncome>=0))return false;
-  if(!data.activity.every(a=>a&&validDate(a.at)&&known.has(a.ticker)&&['Dodano pozycję','Zaktualizowano pozycję','Usunięto pozycję'].includes(a.action)&&Number.isFinite(a.shares)&&a.shares>=0&&(a.valueChange===undefined||a.valueChange===null||Number.isFinite(a.valueChange))))return false;
-  if(!DividendAnalysis.validBackupFields(data))return false;
-  if(data.simulation!==undefined&&!validSimulationState(data.simulation))return false;
-  if(data.tour!==undefined&&(!data.tour||typeof data.tour.completed!=='boolean'||!Number.isInteger(data.tour.lastStep)||data.tour.lastStep< -1||data.tour.lastStep>=9))return false;
-  return Object.entries(data.prices).every(([ticker,value])=>known.has(ticker)&&Number.isFinite(value)&&value>0)&&Object.entries(data.priceTimes).every(([ticker,value])=>known.has(ticker)&&validDate(value))
+  return AppCore.validateBackup(backup, { tickers: companies.map(company => company.ticker), validAnalysisFields: DividendAnalysis.validBackupFields, validSimulationState });
 }
 const settingsDialog=document.querySelector('#settingsDialog');
-document.querySelector('#settingsToggle').addEventListener('click',()=>settingsDialog.showModal());
+const backupDateStorageKey='dividend-ike-backup-date';
+function updateBackupDate() {
+  const value=safeStorage.get(backupDateStorageKey),time=Date.parse(value),days=Number.isFinite(time)?Math.max(0,Math.floor((Date.now()-time)/86400000)):null;
+  document.querySelector('#backupDateStatus').textContent=days===null?'Nie zapisano jeszcze kopii zapasowej.':`Ostatnia kopia: ${days===0?'dzisiaj':days===1?'1 dzień temu':`${days} dni temu`}.`;
+  document.querySelector('#backupReminder').classList.toggle('hidden',!portfolio.length||days!==null&&days<=30);
+}
+document.querySelector('#settingsToggle').addEventListener('click',()=>{updateBackupDate();settingsDialog.showModal()});
+document.querySelector('#openBackupSettings').addEventListener('click',()=>{updateBackupDate();settingsDialog.showModal()});
+document.querySelector('#dismissBackupReminder').addEventListener('click',()=>document.querySelector('#backupReminder').classList.add('hidden'));
 document.querySelector('#closeSettings').addEventListener('click',()=>settingsDialog.close());
 settingsDialog.addEventListener('click',e=> {
   if(e.target===settingsDialog)settingsDialog.close()
@@ -1331,14 +1323,15 @@ document.querySelector('#exportBackup').addEventListener('click',()=> {
     }
   },url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)], {
     type: 'application/json'
-  })),link=document.createElement('a');link.href=url;link.download=`dividend-tracker-kopia-${new Date().toISOString().slice(0,10)}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+  })),link=document.createElement('a');link.href=url;link.download=`dividend-tracker-kopia-${new Date().toISOString().slice(0,10)}.json`;link.click();safeStorage.set(backupDateStorageKey,new Date().toISOString());updateBackupDate();setTimeout(()=>URL.revokeObjectURL(url),1000)
 });
 document.querySelector('#importBackup').addEventListener('click',()=> {
   settingsDialog.close();document.querySelector('#backupFile').click()
 });
-document.querySelector('#resetApp').addEventListener('click',()=>{
-  if(!confirm('Zresetować Dividend Tracker? Usunięte zostaną portfel, notowania, historia, dziennik i ustawienia z tej przeglądarki. Tej operacji nie można cofnąć.'))return;
-  ['dividend-ike-portfolio','dividend-ike-prices','dividend-ike-price-times','dividend-ike-history','dividend-ike-history-started','dividend-ike-activity','dividend-ike-theme','dividend-ike-deposits','dividend-ike-inflation','dividend-ike-deposit-rate','dividend-ike-simulation','dividend-ike-tour'].forEach(key=>localStorage.removeItem(key));
+document.querySelector('#resetApp').addEventListener('click',async()=>{
+  if(!await confirmAction('Zresetować dane?', 'Zostaną usunięte portfel, notowania, historia, dziennik i ustawienia zapisane w tej przeglądarce.', 'Usuń dane', true))return;
+  const removed=['dividend-ike-portfolio','dividend-ike-prices','dividend-ike-price-times','dividend-ike-history','dividend-ike-history-started','dividend-ike-activity','dividend-ike-theme','dividend-ike-deposits','dividend-ike-inflation','dividend-ike-deposit-rate','dividend-ike-simulation','dividend-ike-tour',backupDateStorageKey].map(key=>safeStorage.remove(key));
+  if(removed.includes(false)){toast('Nie udało się usunąć wszystkich danych z tej przeglądarki.');return}
   location.reload();
 });
 document.querySelector('#backupFile').addEventListener('change',async e=> {
@@ -1349,9 +1342,9 @@ document.querySelector('#backupFile').addEventListener('change',async e=> {
     const backup=JSON.parse(await file.text());if(!validateBackup(backup)) {
       toast('Plik nie jest prawidłową kopią Dividend Tracker');return
     }
-    if(!confirm('Przywrócenie kopii zastąpi obecny portfel, historię i dane analizy. Kontynuować?'))return;const values= {
+    if(!await confirmAction('Przywrócić kopię?', 'Kopia zastąpi obecny portfel, historię i dane analizy zapisane w tej przeglądarce.', 'Przywróć kopię'))return;const values= {
       'dividend-ike-portfolio': backup.data.portfolio,'dividend-ike-prices': backup.data.prices,'dividend-ike-price-times': backup.data.priceTimes,'dividend-ike-history': backup.data.history,'dividend-ike-activity': backup.data.activity,'dividend-ike-history-started': backup.data.historyStartedAt,'dividend-ike-theme': backup.data.theme,'dividend-ike-deposits': backup.data.deposits??[],'dividend-ike-inflation': backup.data.inflation??{},'dividend-ike-deposit-rate': backup.data.depositRate??0.03,'dividend-ike-simulation':backup.data.simulation??emptySimulation(),'dividend-ike-tour':backup.data.tour??{completed:false,lastStep:-1}
-    };for(const [key,value] of Object.entries(values))localStorage.setItem(key,typeof value==='string'?value: JSON.stringify(value));location.reload()
+    };if(!Object.entries(values).every(([key,value])=>safeStorage.set(key,typeof value==='string'?value:JSON.stringify(value)))){toast('Import nie został dokończony. Sprawdź miejsce w przeglądarce i zapisz kopię zapasową.');return}location.reload()
   }
   catch {
     toast('Nie udało się odczytać pliku kopii')
@@ -1363,8 +1356,20 @@ function toast(message) {
   el.classList.remove('hidden');
   setTimeout(()=>el.classList.add('hidden'),2400)
 }
+const confirmDialog=document.querySelector('#confirmDialog');
+let finishConfirmation=null;
+confirmDialog.addEventListener('close',()=>{finishConfirmation?.(confirmDialog.returnValue==='confirm');finishConfirmation=null});
+function confirmAction(title,message,actionLabel='Kontynuuj',destructive=false) {
+  document.querySelector('#confirmTitle').textContent=title;
+  document.querySelector('#confirmMessage').textContent=message;
+  const button=document.querySelector('#confirmActionButton');button.textContent=actionLabel;button.classList.toggle('danger-button',destructive);button.classList.toggle('add',!destructive);
+  confirmDialog.returnValue='';
+  confirmDialog.showModal();
+  return new Promise(resolve=>finishConfirmation=resolve);
+}
 document.querySelector('#refresh').onclick=()=>refreshPrices(true);
 render();
+updateBackupDate();
 refreshDividends();
 refreshInflation();
 refreshPrices();

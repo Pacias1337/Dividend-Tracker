@@ -38,7 +38,7 @@ const dividendErrorCacheTtl = 5 * 60 * 1000;
 const quoteCache = new Map();
 const quoteResponseCache = new Map();
 const requestLimit = 4;
-const assetVersion = createHash('sha1').update(['index.html', 'app.css', 'app.js', 'analysis.js', 'simulation.js', 'tutorial.js', 'company-logos.js'].map(file => `${file}:${require('node:fs').statSync(path.join(__dirname, file)).mtimeMs}`).join('|')).digest('hex').slice(0, 10);
+const assetVersion = createHash('sha1').update(['index.html', 'app.css', 'app.js', 'analysis.js', 'simulation.js', 'tutorial.js', 'storage.js', 'app-core.js', 'company-logos.js'].map(file => `${file}:${require('node:fs').statSync(path.join(__dirname, file)).mtimeMs}`).join('|')).digest('hex').slice(0, 10);
 let inflationCache;
 async function fetchWithRetry(url, options) {
   for (let attempt = 0; ; attempt++) {
@@ -297,7 +297,7 @@ const server = http.createServer(async (req, res) =>  {
       });
     }
   }
-  if (['/app.css', '/app.js', '/analysis.js', '/simulation.js', '/tutorial.js'].includes(pathname))  {
+  if (['/app.css', '/app.js', '/analysis.js', '/simulation.js', '/tutorial.js', '/storage.js', '/app-core.js'].includes(pathname))  {
     try  {
       const isCss = pathname === '/app.css', file = pathname.slice(1); res.writeHead(200,  {
         'content-type': `${isCss ? 'text/css' : 'text/javascript'}; charset=utf-8`, 'cache-control': 'no-store'
@@ -311,7 +311,7 @@ const server = http.createServer(async (req, res) =>  {
   }
   if (pathname === '/' || pathname === '/index.html')  {
     try  {
-      const html = (await readFile(path.join(__dirname, 'index.html'), 'utf8')).replace(/(src|href)="(company-logos\.js|app\.css|app\.js|analysis\.js|simulation\.js|tutorial\.js)(?:\?v=[^"]*)?"/g, `$1="$2?v=${assetVersion}"`);
+      const html = (await readFile(path.join(__dirname, 'index.html'), 'utf8')).replace(/(src|href)="(company-logos\.js|app\.css|app\.js|analysis\.js|simulation\.js|tutorial\.js|storage\.js|app-core\.js)(?:\?v=[^"]*)?"/g, `$1="$2?v=${assetVersion}"`);
       res.writeHead(200,  {
         'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store',
         'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",

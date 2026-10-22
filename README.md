@@ -31,6 +31,7 @@ Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplik
 - **Samouczek** prowadzący po głównych funkcjach aplikacji
 - **Tryb jasny i ciemny**
 - **Kopia zapasowa** portfela do pliku JSON i import na innym urządzeniu
+- **Przypomnienie o kopii zapasowej** po 30 dniach bez eksportu
 - **Prywatność**: portfel zostaje w Twojej przeglądarce i nie jest wysyłany na serwer
 
 ## Zrzuty ekranu

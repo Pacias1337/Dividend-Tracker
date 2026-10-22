@@ -22,7 +22,7 @@ Skąd pochodzą dane:
 
 - Node.js (serwer w `server.js`, bez zewnętrznych paczek w działaniu aplikacji)
 - HTML, JavaScript (`index.html`, `app.js`)
-- Moduł obliczeń widoku Analiza (`analysis.js`)
+- Moduły obliczeń widoku Analiza (`analysis.js`) i wspólnych funkcji portfela (`app-core.js`) oraz bezpiecznego storage (`storage.js`)
 - Moduł symulatora IKE (`simulation.js`) i samouczek (`tutorial.js`)
 - Tailwind CSS 4: źródło w `src/styles.css`, wynik w `app.css`
 - Yahoo Finance (ceny i zapasowo dywidendy) oraz Agent Rynku (dywidendy z uchwał WZA)
@@ -47,7 +47,7 @@ Domyślny adres to `http://127.0.0.1:4173`. Jeśli port jest zajęty i nie ustaw
 
 ## Czego nie ruszać
 
-- Klucze w `localStorage`: `dividend-ike-portfolio`, `dividend-ike-prices`, `dividend-ike-price-times`, `dividend-ike-history`, `dividend-ike-history-started`, `dividend-ike-activity`, `dividend-ike-theme`. Zmiana nazwy oznacza, że użytkownik traci swój portfel.
+- Klucze w `localStorage`: `dividend-ike-portfolio`, `dividend-ike-prices`, `dividend-ike-price-times`, `dividend-ike-history`, `dividend-ike-history-started`, `dividend-ike-activity`, `dividend-ike-theme`. Zmiana nazwy oznacza, że użytkownik traci swój portfel. Opcjonalne `dividend-ike-backup-date` przechowuje datę ostatniego eksportu kopii.
 - Statystyki i Analiza są w jednej zakładce. Dziennik wpłat jest przechowywany pod `dividend-ike-deposits` (maksymalnie 400 wpisów `{ date, deposit, balance, start? }`), inflacja pod `dividend-ike-inflation`, a stopa lokaty pod `dividend-ike-deposit-rate`. Wpis z `start: true` oznacza punkt początkowy.
 - Symulator i samouczek zapisują dane pod kluczami `dividend-ike-simulation` i `dividend-ike-tour`. Nie zmieniaj istniejących kluczy ani nie wpisuj użytkownikowi przykładowych kwot.
 - Jedynym źródłem reguł symulatora jest `IKE_RULES` w `simulation.js`. Aktualizuj rok i limit wpłat z oficjalnego obwieszczenia co roku; warunki wypłaty w symulacji są uproszczone i muszą być tak opisane w interfejsie.

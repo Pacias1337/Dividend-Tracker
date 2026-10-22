@@ -13,7 +13,7 @@ function request(path) {
 }
 
 test('serwer udostępnia moduły analizy, symulatora i samouczka jako JavaScript', async () => {
-  for (const [path, marker] of [['analysis.js', 'DividendAnalysis'], ['simulation.js', 'IkeSimulation'], ['tutorial.js', 'AppTutorial']]) {
+  for (const [path, marker] of [['analysis.js', 'DividendAnalysis'], ['simulation.js', 'IkeSimulation'], ['tutorial.js', 'AppTutorial'], ['storage.js', 'createSafeStorage'], ['app-core.js', 'validateBackup']]) {
     let status, headers, body, finish;
     const completed = new Promise(resolve => { finish = resolve; });
     server.emit('request', { url: `/${path}` }, {

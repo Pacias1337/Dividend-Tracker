@@ -13,13 +13,13 @@
   ];
   let overlay, card, spotlight, title, description, count, previousFocus, index = 0, setView;
   function readState() {
-    try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY)); return value && typeof value.completed === 'boolean' && Number.isInteger(value.lastStep) && value.lastStep >= -1 && value.lastStep < steps.length ? value : { completed: false, lastStep: -1 }; }
+    try { const value = JSON.parse(safeStorage.get(STORAGE_KEY)); return value && typeof value.completed === 'boolean' && Number.isInteger(value.lastStep) && value.lastStep >= -1 && value.lastStep < steps.length ? value : { completed: false, lastStep: -1 }; }
     catch { return { completed: false, lastStep: -1 }; }
   }
   let state = readState();
   function save(completed) {
     state = { completed, lastStep: Math.min(index, steps.length - 1) };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    safeStorage.set(STORAGE_KEY, JSON.stringify(state));
   }
   function visible(element) {
     return element && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
