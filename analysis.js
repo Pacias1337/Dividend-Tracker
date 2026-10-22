@@ -1,8 +1,9 @@
 (function (root) {
   const MAX_ENTRIES = 400;
   const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
-  const validEntry = item => item && validDate(item.date) && Number.isFinite(item.deposit) && item.deposit >= 0 && Number.isFinite(item.balance) && item.balance >= 0 && (item.start === undefined || item.start === true);
-  const normalizeEntries = entries => Array.isArray(entries) ? entries.filter(validEntry).sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX_ENTRIES).map(({ date, deposit, balance, start }) => ({ date, deposit, balance, ...(start ? { start: true } : {}) })) : [];
+  const validEntry = item => item && validDate(item.date) && Number.isFinite(item.deposit) && item.deposit >= 0 && Number.isFinite(item.balance) && item.balance >= 0 && (item.positionProfit === undefined || Number.isFinite(item.positionProfit)) && (item.start === undefined || item.start === true);
+  const roundMoney = value => Math.round((value + Number.EPSILON) * 100) / 100;
+  const normalizeEntries = entries => Array.isArray(entries) ? entries.filter(validEntry).sort((a, b) => a.date.localeCompare(b.date)).slice(-MAX_ENTRIES).map(({ date, deposit, balance, positionProfit, start }) => ({ date, deposit: roundMoney(deposit), balance: roundMoney(balance), ...(positionProfit === undefined ? {} : { positionProfit: roundMoney(positionProfit) }), ...(start ? { start: true } : {}) })) : [];
   const validBackupFields = data => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
     if (data.deposits !== undefined && (!Array.isArray(data.deposits) || data.deposits.length > MAX_ENTRIES || !data.deposits.every(validEntry))) return false;

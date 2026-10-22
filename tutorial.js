@@ -5,8 +5,9 @@
     { title: 'Portfel', text: 'Tutaj wpisujesz posiadane instrumenty i ich liczbę. Aplikacja nie łączy się z brokerem ani nie składa zleceń.', target: '#add', view: 'portfolio' },
     { title: 'Podsumowanie portfela', text: 'Kafelki pokazują szacowaną dywidendę i wartość na podstawie ostatnich pobranych notowań.', target: '.summary', view: 'portfolio' },
     { title: 'Statystyki wartości', text: 'W tej zakładce sprawdzisz zmianę wartości portfela w czasie oraz zapisane działania.', target: '#historyTitle', view: 'stats' },
-    { title: 'Dziennik wpłat', text: 'Dopisuj kwotę wpłaty i stan rachunku z wybranego dnia. Bez wpisów aplikacja nie tworzy historii wpłat.', target: '#depositTitle', view: 'stats' },
-    { title: 'Tryb startowy i symulator', text: 'Wpisz własne założenia i porównaj scenariusze. Symulacja nie jest prognozą ani poradą.', target: '#starterTitle', view: 'stats' },
+    { title: 'Dziennik wpłat', text: 'Dodaj datę, wpłatę od poprzedniego wpisu oraz wartość konta z tego dnia.', target: '#depositTitle', view: 'stats' },
+    { title: 'Jeśli IKE prowadzisz już od lat', text: 'Zacznij od najstarszej dostępnej daty. W pierwszym wpisie podaj łączną sumę wpłat do tego dnia i wartość IKE z tego dnia. W kolejnych wpisach wpisuj wpłaty od poprzedniej daty oraz stan konta. Uzupełniaj historię od najstarszego punktu do najnowszego.', target: '#addDeposit', view: 'stats' },
+    { title: 'Analiza wpłat', text: 'Zapisuj wpłaty i stan rachunku, aby śledzić wynik portfela w czasie.', target: '#analysisTitle', view: 'stats' },
     { title: 'Ustawienia i kopia', text: 'W ustawieniach zapiszesz kopię JSON albo odczytasz ją na innym urządzeniu.', target: '#settingsToggle', view: 'stats' },
     { title: 'To wszystko', text: 'Możesz wrócić do samouczka w dowolnej chwili przyciskiem „Samouczek”.', target: '#startTour', view: 'stats' },
   ];

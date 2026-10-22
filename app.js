@@ -562,13 +562,13 @@ const companies=[  {
  { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
  { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', assetType: 'etf', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
 ];
-const defaultPortfolio=['PZU',
-'PEO',
-'ACP',
-'GPW'].map(ticker=>( {
-  ticker,shares: 0
-}));
+const defaultPortfolio=[];
 let portfolio=JSON.parse(localStorage.getItem('dividend-ike-portfolio')||'null')||defaultPortfolio;
+const emptyStartupTickers=['PZU','PEO','ACP','GPW'];
+if(Array.isArray(portfolio)&&portfolio.length===emptyStartupTickers.length&&emptyStartupTickers.every(ticker=>portfolio.some(item=>item?.ticker===ticker&&item.shares===0))) {
+  portfolio=[];
+  localStorage.setItem('dividend-ike-portfolio','[]');
+}
 let prices=JSON.parse(localStorage.getItem('dividend-ike-prices')||'{}');
 let priceTimes=JSON.parse(localStorage.getItem('dividend-ike-price-times')||'{}');
 if(!Object.keys(priceTimes).length)prices= {
@@ -632,9 +632,7 @@ function readSimulationState() {
   }
   catch { return emptySimulation() }
 }
-let simulationState=readSimulationState();
-let firstStarterVisit=!simulationState.enabled&&simulationState.mode===null;
-function saveSimulationState() { localStorage.setItem(simulationStorageKey,JSON.stringify(simulationState)) }
+const simulationState=readSimulationState();
 function readAnalysisStorage(key,fallback) {
   try { return JSON.parse(localStorage.getItem(key)??JSON.stringify(fallback)) }
   catch { return fallback }
@@ -653,14 +651,16 @@ function saveAnalysisStorage() {
   localStorage.setItem(depositRateStorageKey,String(depositRate));
 }
 const money=n=>new Intl.NumberFormat('pl-PL', {
-  style: 'currency',currency: 'PLN'
+  style: 'currency',currency: 'PLN',minimumFractionDigits:2,maximumFractionDigits:2
 }).format(n);
+const roundMoney=value=>Math.round((value+Number.EPSILON)*100)/100;
 const roundDividend=value=>Number((Math.round((value+Number.EPSILON)*100)/100).toFixed(2));
 portfolio.forEach(holding=>{if(Number.isFinite(holding.dividend))holding.dividend=roundDividend(holding.dividend)});
 localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
 const getCompany=t=>companies.find(c=>c.ticker===t);
 const percent=value=>value===null||!Number.isFinite(value)?'—':`${(value*100).toLocaleString('pl-PL',{maximumFractionDigits:2})}%`;
 const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
+let showAllDepositEntries=false,showAllQuarterRows=false;
 function renderAnalysis() {
   const result=DividendAnalysis.calculateAnalysis(analysisEntries,analysisInflation,monthlyInflation),hasEntries=result.rows.length>0;
   document.querySelector('#analysisBalance').textContent=hasEntries?money(result.balance):'—';
@@ -670,19 +670,28 @@ function renderAnalysis() {
   document.querySelector('#analysisReturn').textContent=percent(result.totalReturn);
   document.querySelector('#analysisCagr').textContent=hasEntries?percent(result.cagr):'—';
   const depositRows=document.querySelector('#depositRows');depositRows.replaceChildren();
+  const depositMore=document.querySelector('#showDepositRows'),showAllDeposits=showAllDepositEntries&&result.rows.length>3;
+  depositMore.classList.toggle('hidden',result.rows.length<=3);depositMore.setAttribute('aria-expanded',String(showAllDeposits));depositMore.textContent=showAllDeposits?'Pokaż mniej':`Pokaż więcej (${Math.max(0,result.rows.length-3)})`;
+  if(!showAllDeposits)showAllDepositEntries=false;
   document.querySelector('#depositEmpty').classList.toggle('hidden',hasEntries);
-  for(const [index,row] of result.rows.entries()) {
+  const depositStart=showAllDeposits?0:Math.max(0,result.rows.length-3);
+  for(let index=depositStart;index<result.rows.length;index++) {
+    const row=result.rows[index];
     const tr=document.createElement('tr');
-    [analysisInputDate(row.date),money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.profit),percent(row.returnRate),percent(row.inflation)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
+    [analysisInputDate(row.date),money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.profit),row.positionProfit===undefined?'—':money(row.positionProfit),percent(row.returnRate),percent(row.inflation)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
     const actions=document.createElement('td'),edit=document.createElement('button'),remove=document.createElement('button');
     edit.type=remove.type='button';edit.className='edit';remove.className='delete';edit.innerHTML='<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';remove.innerHTML='<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>';edit.dataset.editDeposit=index;remove.dataset.deleteDeposit=index;edit.setAttribute('aria-label',`Edytuj wpis ${row.date}`);remove.setAttribute('aria-label',`Usuń wpis ${row.date}`);edit.title='Edytuj';remove.title='Usuń';actions.append(edit,remove);tr.append(actions);depositRows.append(tr);
   }
   const quarterRows=document.querySelector('#quarterRows');quarterRows.replaceChildren();
+  const quarterMore=document.querySelector('#showQuarterRows'),showAllQuarters=showAllQuarterRows&&result.quarters.length>3;
+  quarterMore.classList.toggle('hidden',result.quarters.length<=3);quarterMore.setAttribute('aria-expanded',String(showAllQuarters));quarterMore.textContent=showAllQuarters?'Pokaż mniej':`Pokaż więcej (${Math.max(0,result.quarters.length-3)})`;
+  if(!showAllQuarters)showAllQuarterRows=false;
   document.querySelector('#quarterEmpty').classList.toggle('hidden',result.quarters.length>0);
-  for(const row of result.quarters) {
+  const quarterStart=showAllQuarters?0:Math.max(0,result.quarters.length-3);
+  for(const row of result.quarters.slice(quarterStart)) {
     const tr=document.createElement('tr');
     [row.key,money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.change),percent(row.returnRate)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
-    const inflationCell=document.createElement('td'),inflationInput=document.createElement('input');inflationInput.type='number';inflationInput.min='-100';inflationInput.max='1000';inflationInput.step='any';inflationInput.className='quarter-inflation';inflationInput.value=row.inflation===null?'':String(row.inflation*100);inflationInput.setAttribute('aria-label',`Inflacja r/r dla ${row.key}, procent`);inflationInput.dataset.quarter=row.key;inflationCell.append(inflationInput);tr.append(inflationCell);
+    const inflationCell=document.createElement('td'),inflationInput=document.createElement('input');inflationInput.type='number';inflationInput.min='-100';inflationInput.max='1000';inflationInput.step='0.01';inflationInput.className='quarter-inflation';inflationInput.value=row.inflation===null?'':(row.inflation*100).toFixed(2);inflationInput.setAttribute('aria-label',`Inflacja r/r dla ${row.key}, procent`);inflationInput.dataset.quarter=row.key;inflationCell.append(inflationInput);tr.append(inflationCell);
     const adjusted=document.createElement('td');adjusted.textContent=row.depositsWithInflation===null?'—':money(row.depositsWithInflation);tr.append(adjusted);quarterRows.append(tr);
   }
   if(result.quarters.length) {
@@ -691,104 +700,6 @@ function renderAnalysis() {
   }
   renderAnalysisChart('investmentChart','investmentChartEmpty',result.rows,[{className:'analysis-line-balance',values:result.rows.map(row=>row.balance),label:'Stan konta'},{className:'analysis-line-deposits',values:result.rows.map(row=>row.cumulativeDeposits),label:'Suma wpłat'}],false);
   renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'}],true);
-}
-let wizardStep=simulationState.plan.monthlyDeposit!==null?(simulationState.plan.years!==null?(simulationState.plan.annualReturnPct!==null?4:3):2):0,statsOpened=false;
-const simFieldMap={planMonthly:['plan','monthlyDeposit'],planYears:['plan','years'],planReturn:['plan','annualReturnPct'],existingMonthly:['plan','monthlyDeposit'],existingYears:['plan','years'],existingReturn:['plan','annualReturnPct'],existingValue:['existing','value'],existingDeposits:['existing','deposits'],existingProfit:['existing','profit']};
-function setInputValue(id,value) { document.querySelector(`#${id}`).value=value===null||value===undefined?'':String(value) }
-function saveSimulationInput(event) {
-  const input=event.target,number=input.value===''?null:input.valueAsNumber;
-  if(input.id==='annualLimit')simulationState.annualLimit=number;
-  else if(input.id==='withdrawalAmount')simulationState.withdrawalAmount=number;
-  else if(simFieldMap[input.id])simulationState[simFieldMap[input.id][0]][simFieldMap[input.id][1]]=number;
-  saveSimulationState();renderSimulation();
-}
-function syncSimulationInputs() {
-  for(const [id,[group,key]] of Object.entries(simFieldMap))setInputValue(id,simulationState[group][key]);
-  setInputValue('annualLimit',simulationState.annualLimit);setInputValue('withdrawalAmount',simulationState.withdrawalAmount);
-}
-function renderWizard() {
-  document.querySelectorAll('[data-wizard-step]').forEach(step=>step.classList.toggle('hidden',Number(step.dataset.wizardStep)!==wizardStep));
-  document.querySelector('#wizardCount').textContent=`Krok ${wizardStep+1} z 5`;
-  document.querySelector('#wizardProgress').style.width=`${(wizardStep+1)/5*100}%`;
-  document.querySelector('#wizardBack').disabled=wizardStep===0;
-  document.querySelector('#wizardNext').textContent=wizardStep===4?'Zobacz wynik':'Dalej';
-}
-function renderStarter() {
-  const enabled=simulationState.enabled,mode=simulationState.mode;
-  document.querySelector('#simulationToggle').setAttribute('aria-checked',String(enabled));
-  document.querySelector('#simulationToggle').textContent=enabled?'Wyłącz':'Włącz';
-  document.querySelector('#starterBanner').classList.toggle('hidden',!firstStarterVisit||enabled);
-  document.querySelector('#starterContent').classList.toggle('hidden',!enabled);
-  document.querySelector('#modePicker').classList.toggle('hidden',!enabled||Boolean(mode));
-  document.querySelector('#newWizard').classList.toggle('hidden',!enabled||mode!=='new');
-  document.querySelector('#existingForm').classList.toggle('hidden',!enabled||mode!=='existing');
-  document.querySelector('#firstSteps').classList.toggle('hidden',!enabled);
-  document.querySelector('#firstStepPortfolio').classList.toggle('is-done',portfolio.some(item=>item.shares>0));
-  document.querySelector('#firstStepDeposit').classList.toggle('is-done',analysisEntries.length>0);
-  document.querySelector('#firstStepStats').classList.toggle('is-done',statsOpened);
-  document.querySelector('#ikeRulesYear').textContent=IkeSimulation.IKE_RULES.year;
-  document.querySelector('#annualLimitYear').textContent=IkeSimulation.IKE_RULES.year;
-  document.querySelector('#ikeLimitGlossary').textContent=`Roczna maksymalna suma wpłat na IKE. W ${IkeSimulation.IKE_RULES.year} r. wynosi ${money(IkeSimulation.IKE_RULES.annualLimit)}.`;
-  document.querySelector('#taxGlossary').textContent=`Podatek od zysków kapitałowych. Przykład ilustracyjny: od 100 zł zysku ${IkeSimulation.IKE_RULES.taxRate*100}% to ${money(100*IkeSimulation.IKE_RULES.taxRate)} podatku.`;
-  renderWizard();renderSimulation();
-}
-function getSimulationStart() {
-  if(simulationState.mode==='new')return { value:0,deposits:0 };
-  const result=IkeSimulation.reconcileExisting(simulationState.existing.value,simulationState.existing.deposits,simulationState.existing.profit);
-  const error=document.querySelector('#existingError'),resolved=document.querySelector('#existingResolved');
-  error.textContent=result.valid?'':result.error;error.classList.toggle('hidden',result.valid);
-  resolved.textContent=result.valid?`Wyliczone wartości: ${money(result.value)} wartości IKE, ${money(result.deposits)} wpłat, ${money(result.profit)} zysku / straty.`:'';
-  return result.valid?{value:result.value,deposits:result.deposits}:null;
-}
-function simulationDisplay(value) { return money(value) }
-function renderSimulationChart(scenarios,years) {
-  const svg=document.querySelector('#simulationChart'),left=100,right=740,top=22,bottom=220;
-  svg.replaceChildren();
-  const series=[{scenario:scenarios[0],color:'#7d8990',key:'niższy'},{scenario:scenarios[1],color:'#168256',key:'bazowy'},{scenario:scenarios[2],color:'#66a98a',key:'wyższy'}];
-  const adjust=row=>row.value;
-  const all=series.flatMap(item=>item.scenario.rows.map(adjust)).concat(scenarios[1].rows.map(row=>row.deposits));
-  let low=Math.min(0,...all),high=Math.max(1,...all);if(low===high)high=low+1;const pad=(high-low)*.1;low=Math.max(0,low-pad);high+=pad;
-  const x=index=>left+(right-left)*index/Math.max(1,years-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),ns='http://www.w3.org/2000/svg';
-  for(let i=0;i<3;i++){const value=high-(high-low)*i/2,yy=top+(bottom-top)*i/2,line=document.createElementNS(ns,'line'),label=document.createElementNS(ns,'text');line.setAttribute('class','history-grid');line.setAttribute('x1',left);line.setAttribute('x2',right);line.setAttribute('y1',yy);line.setAttribute('y2',yy);label.setAttribute('class','history-label');label.setAttribute('x','0');label.setAttribute('y',yy+4);label.textContent=money(value);svg.append(line,label)}
-  const deposits=scenarios[1].rows.map(row=>row.deposits);
-  for(const item of [...series,{scenario:{rows:scenarios[1].rows},color:'#7d8990',key:'wpłaty',values:deposits}]){
-    const values=item.values||item.scenario.rows.map((row,index)=>adjust(row,index)),polyline=document.createElementNS(ns,'polyline');polyline.setAttribute('fill','none');polyline.setAttribute('stroke',item.color);polyline.setAttribute('stroke-width','3');polyline.setAttribute('points',values.map((value,index)=>`${x(index)},${y(value)}`).join(' '));svg.append(polyline);
-    values.forEach((value,index)=>{const circle=document.createElementNS(ns,'circle'),title=document.createElementNS(ns,'title');circle.setAttribute('cx',x(index));circle.setAttribute('cy',y(value));circle.setAttribute('r','4');circle.setAttribute('fill',item.color);circle.setAttribute('class','simulation-point');title.textContent=`${scenarios[1].rows[index].year}: ${item.key} · ${money(value)}`;circle.append(title);svg.append(circle)});
-  }
-  const start=document.createElementNS(ns,'text'),end=document.createElementNS(ns,'text');start.setAttribute('class','history-label');start.setAttribute('x',left);start.setAttribute('y','248');start.textContent=String(scenarios[1].rows[0].year);end.setAttribute('class','history-label');end.setAttribute('x',right);end.setAttribute('text-anchor','end');end.setAttribute('y','248');end.textContent=String(scenarios[1].rows.at(-1).year);svg.append(start,end);
-}
-function renderSimulation() {
-  const results=document.querySelector('#simulationResults');
-  if(!simulationState.enabled||!simulationState.mode){results.classList.add('hidden');return}
-  if(simulationState.mode==='new'&&wizardStep<4){results.classList.add('hidden');return}
-  const start=getSimulationStart(),plan=simulationState.plan;
-  const planValid=Number.isFinite(plan.monthlyDeposit)&&plan.monthlyDeposit>=0&&Number.isFinite(plan.annualReturnPct)&&plan.annualReturnPct>=-100&&plan.annualReturnPct<=100&&Number.isInteger(plan.years)&&plan.years>=1&&plan.years<=80&&Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0;
-  const planError=document.querySelector('#existingPlanError'),limitError=document.querySelector('#limitError');
-  planError.textContent=planValid?'':'Wpisz poprawną miesięczną wpłatę, stopę od −100% do 100% i pełny horyzont od 1 do 80 lat.';planError.classList.toggle('hidden',planValid||simulationState.mode!=='existing');
-  limitError.textContent=Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0?'':'Limit musi być nieujemną kwotą.';limitError.classList.toggle('hidden',Number.isFinite(simulationState.annualLimit)&&simulationState.annualLimit>=0);
-  if(!start||!planValid){results.classList.add('hidden');return}
-  const input={startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1};
-  const scenarios=IkeSimulation.projectScenarios(input);if(scenarios.some(item=>!item.valid)){results.classList.add('hidden');return}
-  results.classList.remove('hidden');
-  const base=scenarios[1].rows,last=base.at(-1);
-  document.querySelector('#simEndValue').textContent=simulationDisplay(last.value,plan.years);
-  document.querySelector('#simDeposits').textContent=simulationDisplay(last.deposits,plan.years);
-  document.querySelector('#simProfit').textContent=simulationDisplay(last.profit,plan.years);
-  const overLimit=scenarios.some(item=>item.rows.some(row=>row.limitExceeded));document.querySelector('#limitWarning').classList.toggle('hidden',!overLimit||simulationState.capToLimit);
-  const rows=document.querySelector('#simulationRows');rows.replaceChildren();
-  for(const [index,row] of base.entries()) {const tr=document.createElement('tr');[row.year,money(row.yearlyDeposit),simulationDisplay(row.deposits,index+1),simulationDisplay(row.value,index+1),simulationDisplay(row.profit,index+1),money(row.tax),money(row.net)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});rows.append(tr)}
-  renderSimulationChart(scenarios,plan.years);
-  document.querySelector('#conditionsStatus').textContent='Porównanie pokazuje uproszczone warianty wypłaty przed i po spełnieniu warunków IKE.';
-  const amount=simulationState.withdrawalAmount,withdrawalError=document.querySelector('#withdrawalError');
-  document.querySelector('#withdrawalAmount').max=String(last.value);
-  if(amount===null){withdrawalError.classList.add('hidden');document.querySelector('#withdrawNow').replaceChildren();document.querySelector('#withdrawLater').replaceChildren();document.querySelector('#taxDifference').textContent='';return}
-  const now=IkeSimulation.withdrawalTax(last.value,last.deposits,amount);if(!now.valid){withdrawalError.textContent=now.error;withdrawalError.classList.remove('hidden');document.querySelector('#withdrawNow').replaceChildren();document.querySelector('#withdrawLater').replaceChildren();document.querySelector('#taxDifference').textContent='';return}
-  withdrawalError.classList.add('hidden');
-  const later={...now,tax:0,net:amount};
-  const renderDetails=(id,result)=>{const list=document.querySelector(`#${id}`);list.replaceChildren();const values=[['Podatek',money(result.tax)],['Kwota netto',money(result.net)],['Część kapitałowa',money(result.capital)],['Część zyskowa',money(result.gain)],['Stan po wypłacie',money(result.remainingValue)]];for(const [label,value] of values){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;list.append(dt,dd)}};
-  renderDetails('withdrawNow',now);renderDetails('withdrawLater',later);
-  document.querySelector('#taxDifference').textContent=`Różnica: ${money(now.tax)} podatku mniej po spełnieniu warunków.`;
-  document.querySelector('#simulationTitle').textContent='Wynik symulacji';
 }
 function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   const svg=document.querySelector(`#${svgId}`),empty=document.querySelector(`#${emptyId}`),values=series.flatMap(item=>item.values.filter(Number.isFinite));
@@ -923,9 +834,9 @@ function render() {
   renderStats();
   localStorage.setItem('dividend-ike-portfolio',JSON.stringify(portfolio));
 }
-function recordActivity(action,ticker,shares) {
+function recordActivity(action,ticker,shares,valueChange=null) {
   portfolioActivity.unshift( {
-    at: new Date().toISOString(),action,ticker,shares
+    at: new Date().toISOString(),action,ticker,shares,valueChange:Number.isFinite(valueChange)?roundMoney(valueChange):null
   });
   portfolioActivity=portfolioActivity.slice(0,500);
   localStorage.setItem('dividend-ike-activity',JSON.stringify(portfolioActivity))
@@ -978,9 +889,9 @@ function renderStats() {
   document.querySelector('#historyChart').classList.toggle('hidden',!points.length);
   document.querySelector('#historyEmpty').textContent=active.length?'Historia wartości zacznie się po pobraniu kursów i zapisze pierwszy punkt.': 'Dodaj pozycje z liczbą akcji większą od zera; od tego momentu zacznę zapisywać historię.';
   if(points.length)renderHistoryChart(points);
-  document.querySelector('#activityCount').textContent=`(${portfolioActivity.length})`;
+  document.querySelector('#activityCount').textContent=`(${Math.min(3,portfolioActivity.length)}${portfolioActivity.length>3?` z ${portfolioActivity.length}`:''})`;
   document.querySelector('#activityEmpty').classList.toggle('hidden',portfolioActivity.length>0);
-  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,12).map(item=>`<li><span>${item.action}: ${getCompany(item.ticker)?.name||item.ticker}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek</small></span><time datetime="${item.at}">${new Date(item.at).toLocaleString('pl-PL')}</time></li>`).join(''): '';
+  document.querySelector('#activityList').innerHTML=portfolioActivity.length?portfolioActivity.slice(0,3).map(item=>`<li><span>${item.action}: ${getCompany(item.ticker)?.name||item.ticker}<small>${Number(item.shares).toLocaleString('pl-PL',{maximumFractionDigits:6})} jednostek · Zmiana wartości portfela: ${Number.isFinite(item.valueChange)?`${item.valueChange>0?'+':''}${money(item.valueChange)}`:'brak danych'}</small></span><time datetime="${item.at}">${new Date(item.at).toLocaleString('pl-PL')}</time></li>`).join(''): '';
   document.querySelectorAll('.period-tab').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.period===statsPeriod)));
 }
 function renderHistoryChart(points) {
@@ -1194,12 +1105,12 @@ document.querySelector('#companyOptions').addEventListener('keydown',e=> {
   if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key))return;e.preventDefault();const options=[...document.querySelectorAll('#companyOptions [role="option"]')],index=options.indexOf(document.activeElement);if(!options.length)return;const next=e.key==='Home'?0: e.key==='End'?options.length-1: (index+(e.key==='ArrowDown'?1: -1)+options.length)%options.length;options[next].focus()
 });
 document.querySelector('#form').addEventListener('submit',e=> {
-  e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),rawDividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(rawDividend)||rawDividend<0)return;const dividend=roundDividend(rawDividend);document.querySelector('#dividend').value=dividend.toFixed(2);const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję': 'Dodano pozycję';if(holding) {
+  e.preventDefault();const ticker=editTicker||document.querySelector('#company').value,company=getCompany(ticker),shares=Number(document.querySelector('#shares').value),rawDividend=Number(document.querySelector('#dividend').value);if(!Number.isFinite(shares)||shares<0||!Number.isFinite(rawDividend)||rawDividend<0)return;const dividend=roundDividend(rawDividend);document.querySelector('#dividend').value=dividend.toFixed(2);const holding=portfolio.find(x=>x.ticker===ticker),action=holding?'Zaktualizowano pozycję': 'Dodano pozycję',valueChange=Number.isFinite(prices[ticker])?(shares-(holding?.shares??0))*prices[ticker]:null;if(holding) {
     holding.shares=shares;holding.dividend=dividend;holding.year=dividend===company.dividend?company.year: 'własna'
   }
   else portfolio.push( {
     ticker,shares,dividend,year: dividend===company.dividend?company.year: 'własna'
-  });recordActivity(action,ticker,shares);saveHistorySnapshot(true);closeForm();render();refreshPrices()
+  });recordActivity(action,ticker,shares,valueChange);saveHistorySnapshot(true);closeForm();render();refreshPrices()
 });
 document.querySelector('#rows').closest('table').querySelector('thead').addEventListener('click', (event) =>  {
   const button = event.target.closest('.table-sort'); if (!button) return; if (portfolioSort.column === button.dataset.sort)  {
@@ -1273,7 +1184,7 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
   const button = event.target.closest('[data-edit], [data-delete]'); if (!button) return; const ticker = button.dataset.edit || button.dataset.delete; if (button.dataset.edit)  {
     openForm(ticker); return;
   }
-  const holding = portfolio.find((item) => item.ticker === ticker); recordActivity('Usunięto pozycję', ticker, holding?.shares || 0); portfolio = portfolio.filter((item) => item.ticker !== ticker); saveHistorySnapshot(true); render();
+  const holding = portfolio.find((item) => item.ticker === ticker),valueChange=Number.isFinite(prices[ticker])?-(holding?.shares||0)*prices[ticker]:null; recordActivity('Usunięto pozycję', ticker, holding?.shares || 0,valueChange); portfolio = portfolio.filter((item) => item.ticker !== ticker); saveHistorySnapshot(true); render();
 });
 function setView(view) {
   const stats=view==='stats'||view==='analysis';
@@ -1281,7 +1192,7 @@ function setView(view) {
   document.querySelector('#statsView').classList.toggle('hidden',!stats);
   document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats));
   document.querySelector('#statsTab').setAttribute('aria-selected',String(stats));
-  if(stats){statsOpened=true;renderStats();renderAnalysis();renderStarter()}
+  if(stats){renderStats();renderAnalysis()}
 }
 const themeToggle=document.querySelector('#themeToggle');
 let darkMode=localStorage.getItem('dividend-ike-theme')==='dark';
@@ -1296,33 +1207,11 @@ setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));
 document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));
-syncSimulationInputs();
-document.querySelector('#simulationToggle').addEventListener('click',()=>{simulationState.enabled=!simulationState.enabled;if(simulationState.enabled)firstStarterVisit=false;saveSimulationState();renderStarter()});
-document.querySelector('#enableSimulation').addEventListener('click',()=>{simulationState.enabled=true;firstStarterVisit=false;saveSimulationState();renderStarter()});
-document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>{simulationState.mode=button.dataset.mode;wizardStep=0;saveSimulationState();renderStarter()}));
-document.querySelectorAll('.change-mode').forEach(button=>button.addEventListener('click',()=>{simulationState.mode=null;wizardStep=0;saveSimulationState();renderStarter()}));
-document.querySelector('#wizardBack').addEventListener('click',()=>{wizardStep=Math.max(0,wizardStep-1);renderWizard();renderSimulation()});
-document.querySelector('#wizardNext').addEventListener('click',()=>{
-  const required={1:['monthlyDeposit','Wpisz planowaną miesięczną wpłatę.'],2:['years','Wpisz horyzont w pełnych latach.'],3:['annualReturnPct','Wpisz własne założenie stopy zwrotu.']}[wizardStep];
-  if(required&&simulationState.plan[required[0]]===null){toast(required[1]);document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
-  const plan=simulationState.plan;
-  if(wizardStep===1&&plan.monthlyDeposit<0||wizardStep===2&&(!Number.isInteger(plan.years)||plan.years<1||plan.years>80)||wizardStep===3&&(!Number.isFinite(plan.annualReturnPct)||plan.annualReturnPct< -100||plan.annualReturnPct>100)){toast('Sprawdź wartość w tym kroku i spróbuj ponownie.');document.querySelector(['#planMonthly','#planYears','#planReturn'][wizardStep-1]).focus();return}
-  wizardStep=Math.min(4,wizardStep+1);renderWizard();renderSimulation();
-});
-document.querySelector('#starterContent').addEventListener('input',saveSimulationInput);
-document.querySelector('#capContributions').addEventListener('click',()=>{simulationState.capToLimit=true;saveSimulationState();renderSimulation()});
-document.querySelector('#withdrawAll').addEventListener('click',()=>{const start=getSimulationStart(),plan=simulationState.plan;if(!start||!Number.isFinite(plan.monthlyDeposit)||!Number.isFinite(plan.annualReturnPct)||!Number.isInteger(plan.years))return;const result=IkeSimulation.projectGrowth({startValue:start.value,startDeposits:start.deposits,monthlyDeposit:plan.monthlyDeposit,annualReturnPct:plan.annualReturnPct,years:plan.years,annualLimit:simulationState.annualLimit,capToLimit:simulationState.capToLimit,currentYear:new Date().getFullYear()+1});if(result.valid){simulationState.withdrawalAmount=result.rows.at(-1).value;setInputValue('withdrawalAmount',simulationState.withdrawalAmount);saveSimulationState();renderSimulation()}});
-document.querySelector('#saveStartEntry').addEventListener('click',()=>{
-  const start=getSimulationStart();if(simulationState.mode!=='existing'||!start){toast(document.querySelector('#existingError').textContent||'Uzupełnij co najmniej dwie wartości IKE.');if(simulationState.mode==='existing')document.querySelector(['#existingValue','#existingDeposits','#existingProfit'].find(id=>document.querySelector(id).value==='')||'#existingValue').focus();return}
-  const confirmed=!analysisEntries.length||confirm('Wpis startowy zastąpi dotychczasowy dziennik, aby nie policzyć wpłat drugi raz. Kontynuować?');if(!confirmed)return;
-  analysisEntries=DividendAnalysis.normalizeEntries([{date:new Date().toISOString().slice(0,10),deposit:start.deposits,balance:start.value,start:true}]);saveAnalysisStorage();renderAnalysis();toast('Zapisano wpis startowy.');
-});
-document.querySelector('#offerTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
-document.querySelector('#startTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
-document.querySelector('#simulationToggle').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();document.querySelector('#simulationToggle').click()}});
 document.querySelector('#startTour').setAttribute('aria-keyshortcuts','F1');
-document.addEventListener('keydown',e=>{if(e.key==='F1'&&!e.target.closest('input,textarea,select,[contenteditable="true"]')){e.preventDefault();window.AppTutorial?.start({setView})}});
-saveSimulationState();renderStarter();
+document.querySelector('#startTour').addEventListener('click',()=>window.AppTutorial?.start({setView}));
+document.addEventListener('keydown',event=>{
+  if(event.key==='F1'&&!event.target.closest('input,textarea,select,[contenteditable="true"]')){event.preventDefault();window.AppTutorial?.start({setView})}
+});
 const depositDialog=document.querySelector('#depositDialog'),depositForm=document.querySelector('#depositForm');
 let editingDepositIndex=null;
 function openDepositForm(index=null) {
@@ -1330,16 +1219,20 @@ function openDepositForm(index=null) {
   const currentValue=portfolio.reduce((sum,item)=>sum+(Number.isFinite(prices[item.ticker])&&prices[item.ticker]>0?item.shares*prices[item.ticker]:0),0);
   document.querySelector('#depositFormTitle').textContent=index===null?'Dodaj wpis':'Edytuj wpis';
   document.querySelector('#depositDate').value=index===null?new Date().toISOString().slice(0,10):analysisEntries[index].date;
-  document.querySelector('#depositAmount').value=index===null?'':String(analysisEntries[index].deposit);
-  document.querySelector('#depositBalance').value=index===null?String(currentValue):String(analysisEntries[index].balance);
+  document.querySelector('#depositBalance').value=roundMoney(index===null?currentValue:analysisEntries[index].balance).toFixed(2);
+  document.querySelector('#depositAmount').value=index===null?'':roundMoney(analysisEntries[index].deposit).toFixed(2);
+  document.querySelector('#depositProfit').value=index===null||analysisEntries[index].positionProfit===undefined?'':roundMoney(analysisEntries[index].positionProfit).toFixed(2);
   depositDialog.showModal();
 }
 document.querySelector('#addDeposit').addEventListener('click',()=>openDepositForm());
+['#depositAmount','#depositBalance','#depositProfit'].forEach(selector=>document.querySelector(selector).addEventListener('change',event=>{
+  if(Number.isFinite(event.currentTarget.valueAsNumber))event.currentTarget.value=roundMoney(event.currentTarget.valueAsNumber).toFixed(2);
+}));
 document.querySelector('#closeDeposit').addEventListener('click',()=>depositDialog.close());
 document.querySelector('#cancelDeposit').addEventListener('click',()=>depositDialog.close());
 depositForm.addEventListener('submit',event=>{
   event.preventDefault();
-  const entry={date:document.querySelector('#depositDate').value,deposit:document.querySelector('#depositAmount').valueAsNumber,balance:document.querySelector('#depositBalance').valueAsNumber};
+  const profitInput=document.querySelector('#depositProfit'),entry={date:document.querySelector('#depositDate').value,deposit:roundMoney(document.querySelector('#depositAmount').valueAsNumber),balance:roundMoney(document.querySelector('#depositBalance').valueAsNumber),...(profitInput.value===''?{}:{positionProfit:roundMoney(profitInput.valueAsNumber)})};
   if(!DividendAnalysis.validEntry(entry)){toast('Wpisz poprawną datę oraz kwoty nieujemne i skończone.');return}
   if(editingDepositIndex===null&&analysisEntries.length>=DividendAnalysis.MAX_ENTRIES){toast('Możesz zapisać maksymalnie 400 wpisów.');return}
   const entries=[...analysisEntries];if(editingDepositIndex===null)entries.push(entry);else entries[editingDepositIndex]=entry;
@@ -1351,8 +1244,10 @@ document.querySelector('#depositRows').addEventListener('click',event=>{
   if(button.hasAttribute('data-edit-deposit')){openDepositForm(index);return}
   analysisEntries.splice(index,1);saveAnalysisStorage();renderAnalysis();
 });
+document.querySelector('#showDepositRows').addEventListener('click',()=>{showAllDepositEntries=!showAllDepositEntries;renderAnalysis()});
+document.querySelector('#showQuarterRows').addEventListener('click',()=>{showAllQuarterRows=!showAllQuarterRows;renderAnalysis()});
 document.querySelector('#quarterRows').addEventListener('change',event=>{
-  const input=event.target.closest('[data-quarter]');if(!input||!/^\d{4}-Q[1-4]$/.test(input.dataset.quarter))return;const value=input.value===''?null:input.valueAsNumber/100;
+  const input=event.target.closest('[data-quarter]');if(!input||!/^\d{4}-Q[1-4]$/.test(input.dataset.quarter))return;const value=input.value===''?null:roundMoney(input.valueAsNumber)/100;
   if(value!==null&&(!Number.isFinite(value)||value< -1||value>10)){toast('Inflacja musi mieścić się w zakresie od −100% do 1000%.');renderAnalysis();return}
   if(value===null)delete analysisInflation[input.dataset.quarter];else analysisInflation[input.dataset.quarter]=value;
   saveAnalysisStorage();renderAnalysis();
@@ -1413,10 +1308,10 @@ function validateBackup(backup) {
   validDate=value=>typeof value==='string'&&Number.isFinite(Date.parse(value));
   if(!data.portfolio.every(h=>h&&known.has(h.ticker)&&!seen.has(h.ticker)&&seen.add(h.ticker)&&Number.isFinite(h.shares)&&h.shares>=0&&(h.dividend==null||Number.isFinite(h.dividend)&&h.dividend>=0)))return false;
   if(!data.history.every(h=>h&&validDate(h.at)&&Number.isFinite(h.value)&&h.value>=0&&Number.isFinite(h.annualIncome)&&h.annualIncome>=0))return false;
-  if(!data.activity.every(a=>a&&validDate(a.at)&&known.has(a.ticker)&&['Dodano pozycję','Zaktualizowano pozycję','Usunięto pozycję'].includes(a.action)&&Number.isFinite(a.shares)&&a.shares>=0))return false;
+  if(!data.activity.every(a=>a&&validDate(a.at)&&known.has(a.ticker)&&['Dodano pozycję','Zaktualizowano pozycję','Usunięto pozycję'].includes(a.action)&&Number.isFinite(a.shares)&&a.shares>=0&&(a.valueChange===undefined||a.valueChange===null||Number.isFinite(a.valueChange))))return false;
   if(!DividendAnalysis.validBackupFields(data))return false;
   if(data.simulation!==undefined&&!validSimulationState(data.simulation))return false;
-  if(data.tour!==undefined&&(!data.tour||typeof data.tour.completed!=='boolean'||!Number.isInteger(data.tour.lastStep)||data.tour.lastStep< -1||data.tour.lastStep>=8))return false;
+  if(data.tour!==undefined&&(!data.tour||typeof data.tour.completed!=='boolean'||!Number.isInteger(data.tour.lastStep)||data.tour.lastStep< -1||data.tour.lastStep>=9))return false;
   return Object.entries(data.prices).every(([ticker,value])=>known.has(ticker)&&Number.isFinite(value)&&value>0)&&Object.entries(data.priceTimes).every(([ticker,value])=>known.has(ticker)&&validDate(value))
 }
 const settingsDialog=document.querySelector('#settingsDialog');
@@ -1436,6 +1331,11 @@ document.querySelector('#exportBackup').addEventListener('click',()=> {
 });
 document.querySelector('#importBackup').addEventListener('click',()=> {
   settingsDialog.close();document.querySelector('#backupFile').click()
+});
+document.querySelector('#resetApp').addEventListener('click',()=>{
+  if(!confirm('Zresetować Dividend Tracker? Usunięte zostaną portfel, notowania, historia, dziennik i ustawienia z tej przeglądarki. Tej operacji nie można cofnąć.'))return;
+  ['dividend-ike-portfolio','dividend-ike-prices','dividend-ike-price-times','dividend-ike-history','dividend-ike-history-started','dividend-ike-activity','dividend-ike-theme','dividend-ike-deposits','dividend-ike-inflation','dividend-ike-deposit-rate','dividend-ike-simulation','dividend-ike-tour'].forEach(key=>localStorage.removeItem(key));
+  location.reload();
 });
 document.querySelector('#backupFile').addEventListener('change',async e=> {
   const file=e.target.files[0];e.target.value='';if(!file)return;if(file.size>5_000_000) {

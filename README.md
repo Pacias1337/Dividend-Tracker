@@ -27,9 +27,8 @@ Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplik
 - **Wartość portfela** i średnia stopa dywidendy liczone z aktualnych kursów
 - **Alokacja kapitału według sektorów** na wykresie kołowym
 - **Lista Twoich spółek**: liczba akcji, kurs, łączna wartość, dywidenda na akcję, szacowana dywidenda roczna i stopa dywidendy
-- **Statystyki i analiza** w jednej zakładce: historia portfela, dziennik wpłat, inflacja i porównanie z lokatą
-- **Tryb startowy** i symulator IKE: użytkownik wpisuje własne założenia, porównuje trzy scenariusze i sprawdza uproszczoną symulację wypłaty
-- **Samouczek** prowadzący po głównych funkcjach aplikacji oraz słowniczek pojęć
+- **Statystyki i analiza** w jednej zakładce: historia portfela, dziennik wpłat i inflacja
+- **Samouczek** prowadzący po głównych funkcjach aplikacji
 - **Tryb jasny i ciemny**
 - **Kopia zapasowa** portfela do pliku JSON i import na innym urządzeniu
 - **Prywatność**: portfel zostaje w Twojej przeglądarce i nie jest wysyłany na serwer
@@ -46,13 +45,11 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 
 ### Statystyki i analiza
 
-Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wpłat, analizę inflacji, porównanie z lokatą i symulator IKE. Dziennik i symulator nie zawierają przykładowych danych.
+Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wpłat i analizę inflacji.
 
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
 </p>
-
-Tryb startowy nie wstawia przykładowych sald ani stóp zwrotu. Symulacja ma charakter edukacyjny i pokazuje uproszczony wariant warunków wypłaty; szczegółowe zasady i rozliczenie podatku sprawdź w instytucji prowadzącej IKE. Limit wpłat na 2026 r. wynosi 28 260 zł i należy aktualizować go po publikacji nowego obwieszczenia.
 
 ## Wymagania
 
