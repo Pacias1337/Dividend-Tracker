@@ -15,22 +15,21 @@
     return { year, quarter, key: `${year}-Q${quarter}` };
   };
 
-  function calculateAnalysis(input, inflation = {}, depositRate = 0.03) {
+  function calculateAnalysis(input, inflation = {}, monthlyInflation = {}) {
     const entries = normalizeEntries(input);
-    if (!Number.isFinite(depositRate)) depositRate = 0.03;
     if (!inflation || typeof inflation !== 'object' || Array.isArray(inflation)) inflation = {};
+    if (!monthlyInflation || typeof monthlyInflation !== 'object' || Array.isArray(monthlyInflation)) monthlyInflation = {};
+    const inflationForMonth = (year, month) => Number.isFinite(monthlyInflation[`${year}-${String(month).padStart(2, '0')}`]) ? monthlyInflation[`${year}-${String(month).padStart(2, '0')}`] : null;
     let deposits = 0;
-    const firstTime = entries.length ? Date.parse(`${entries[0].date}T00:00:00Z`) : 0;
     const rows = entries.map(item => {
       deposits += item.deposit;
       const profit = item.balance - deposits;
-      const elapsedYears = (Date.parse(`${item.date}T00:00:00Z`) - firstTime) / 86400000 / 365;
       const quarter = quarterOf(item.date);
-      return { ...item, cumulativeDeposits: deposits, profit, returnRate: deposits > 0 ? profit / deposits : null, inflation: Number.isFinite(inflation[quarter.key]) ? inflation[quarter.key] : null, depositReturn: elapsedYears * depositRate };
+      return { ...item, cumulativeDeposits: deposits, profit, returnRate: deposits > 0 ? profit / deposits : null, inflation: Number.isFinite(inflation[quarter.key]) ? inflation[quarter.key] : inflationForMonth(quarter.year, Number(item.date.slice(5, 7))) };
     });
     const totalDeposits = deposits;
     const last = rows.at(-1);
-    const days = last ? (Date.parse(`${last.date}T00:00:00Z`) - firstTime) / 86400000 : 0;
+    const days = last ? (Date.parse(`${last.date}T00:00:00Z`) - Date.parse(`${entries[0].date}T00:00:00Z`)) / 86400000 : 0;
     const totalReturn = last && totalDeposits > 0 ? (last.balance - totalDeposits) / totalDeposits : null;
     const cagr = days > 0 && totalDeposits > 0 ? (1 + totalReturn) ** (365 / days) - 1 : 0;
     const quarters = [];
@@ -50,7 +49,8 @@
         if (balance === null) balance = priorBalance;
         const base = priorBalance + deposit;
         const change = balance - base;
-        const inflationRate = Number.isFinite(inflation[key]) ? inflation[key] : null;
+        const monthlyRates = [1, 2, 3].map(offset => inflationForMonth(year, (quarter - 1) * 3 + offset)).filter(value => value !== null);
+        const inflationRate = Number.isFinite(inflation[key]) ? inflation[key] : monthlyRates.length ? monthlyRates.reduce((sum, value) => sum + value, 0) / monthlyRates.length : null;
         const months = (year - start.year) * 12 + quarter * 3;
         quarters.push({ key, deposit, cumulativeDeposits: cumulative, balance, change, returnRate: base > 0 ? change / base : null, inflation: inflationRate, depositsWithInflation: inflationRate === null ? null : cumulative * (1 + inflationRate * months / 12) });
         priorBalance = balance;
@@ -58,9 +58,10 @@
         if (quarter === 5) { quarter = 1; year++; }
       }
     }
+    const shownQuarters = quarters.filter(item => item.deposit > 0);
     const knownInflation = quarters.map(item => item.inflation).filter(value => value !== null);
     const finalQuarter = quarters.at(-1);
-    return { rows, quarters, totalDeposits, balance: last?.balance ?? null, totalProfit: last ? last.balance - totalDeposits : null, totalReturn, cagr, summary: { deposit: quarters.reduce((sum, item) => sum + item.deposit, 0), cumulativeDeposits: finalQuarter?.cumulativeDeposits ?? 0, balance: finalQuarter?.balance ?? null, change: quarters.reduce((sum, item) => sum + item.change, 0), returnRate: finalQuarter && finalQuarter.cumulativeDeposits > 0 ? (finalQuarter.balance - finalQuarter.cumulativeDeposits) / finalQuarter.cumulativeDeposits : null, inflation: knownInflation.length ? knownInflation.reduce((sum, value) => sum + value, 0) / knownInflation.length : null, depositsWithInflation: finalQuarter?.depositsWithInflation ?? null } };
+    return { rows, quarters: shownQuarters, totalDeposits, balance: last?.balance ?? null, totalProfit: last ? last.balance - totalDeposits : null, totalReturn, cagr, summary: { deposit: quarters.reduce((sum, item) => sum + item.deposit, 0), cumulativeDeposits: finalQuarter?.cumulativeDeposits ?? 0, balance: finalQuarter?.balance ?? null, change: quarters.reduce((sum, item) => sum + item.change, 0), returnRate: finalQuarter && finalQuarter.cumulativeDeposits > 0 ? (finalQuarter.balance - finalQuarter.cumulativeDeposits) / finalQuarter.cumulativeDeposits : null, inflation: knownInflation.length ? knownInflation.reduce((sum, value) => sum + value, 0) / knownInflation.length : null, depositsWithInflation: finalQuarter?.depositsWithInflation ?? null } };
   }
 
   const api = { MAX_ENTRIES, validDate, validEntry, normalizeEntries, validBackupFields, quarterOf, calculateAnalysis };

@@ -611,6 +611,7 @@ function readAnalysisStorage(key,fallback) {
 }
 let analysisEntries=DividendAnalysis.normalizeEntries(readAnalysisStorage(depositStorageKey,[]));
 let analysisInflation=readAnalysisStorage(inflationStorageKey,{});
+let monthlyInflation={};
 if(!analysisInflation||typeof analysisInflation!=='object'||Array.isArray(analysisInflation))analysisInflation={};
 analysisInflation=Object.fromEntries(Object.entries(analysisInflation).filter(([key,value])=>/^\d{4}-Q[1-4]$/.test(key)&&Number.isFinite(value)&&value>=-1&&value<=10));
 const savedDepositRate=localStorage.getItem(depositRateStorageKey);
@@ -628,7 +629,7 @@ const getCompany=t=>companies.find(c=>c.ticker===t);
 const percent=value=>value===null||!Number.isFinite(value)?'—':`${(value*100).toLocaleString('pl-PL',{maximumFractionDigits:2})}%`;
 const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
 function renderAnalysis() {
-  const result=DividendAnalysis.calculateAnalysis(analysisEntries,analysisInflation,depositRate),hasEntries=result.rows.length>0;
+  const result=DividendAnalysis.calculateAnalysis(analysisEntries,analysisInflation,monthlyInflation),hasEntries=result.rows.length>0;
   document.querySelector('#analysisBalance').textContent=hasEntries?money(result.balance):'—';
   document.querySelector('#analysisBalanceDate').textContent=hasEntries?`Stan na ${result.rows.at(-1).date}`:'Dodaj pierwszy wpis';
   document.querySelector('#analysisDeposits').textContent=hasEntries?money(result.totalDeposits):'—';
@@ -639,9 +640,9 @@ function renderAnalysis() {
   document.querySelector('#depositEmpty').classList.toggle('hidden',hasEntries);
   for(const [index,row] of result.rows.entries()) {
     const tr=document.createElement('tr');
-    [analysisInputDate(row.date),money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.profit),percent(row.returnRate),percent(row.inflation),percent(row.depositReturn)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
+    [analysisInputDate(row.date),money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.profit),percent(row.returnRate),percent(row.inflation)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
     const actions=document.createElement('td'),edit=document.createElement('button'),remove=document.createElement('button');
-    edit.type=remove.type='button';edit.className='edit';remove.className='delete';edit.textContent='Edytuj';remove.textContent='Usuń';edit.dataset.editDeposit=index;remove.dataset.deleteDeposit=index;edit.setAttribute('aria-label',`Edytuj wpis ${row.date}`);remove.setAttribute('aria-label',`Usuń wpis ${row.date}`);actions.append(edit,remove);tr.append(actions);depositRows.append(tr);
+    edit.type=remove.type='button';edit.className='edit';remove.className='delete';edit.innerHTML='<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';remove.innerHTML='<svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>';edit.dataset.editDeposit=index;remove.dataset.deleteDeposit=index;edit.setAttribute('aria-label',`Edytuj wpis ${row.date}`);remove.setAttribute('aria-label',`Usuń wpis ${row.date}`);edit.title='Edytuj';remove.title='Usuń';actions.append(edit,remove);tr.append(actions);depositRows.append(tr);
   }
   const quarterRows=document.querySelector('#quarterRows');quarterRows.replaceChildren();
   document.querySelector('#quarterEmpty').classList.toggle('hidden',result.quarters.length>0);
@@ -655,9 +656,8 @@ function renderAnalysis() {
     const row=result.summary,tr=document.createElement('tr');tr.className='analysis-total';
     [ 'Razem / Średnia',money(row.deposit),money(row.cumulativeDeposits),row.balance===null?'—':money(row.balance),money(row.change),percent(row.returnRate),percent(row.inflation),row.depositsWithInflation===null?'—':money(row.depositsWithInflation) ].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});quarterRows.append(tr);
   }
-  document.querySelector('#depositRate').value=String(depositRate*100);
   renderAnalysisChart('investmentChart','investmentChartEmpty',result.rows,[{className:'analysis-line-balance',values:result.rows.map(row=>row.balance),label:'Stan konta'},{className:'analysis-line-deposits',values:result.rows.map(row=>row.cumulativeDeposits),label:'Suma wpłat'}],false);
-  renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'},{className:'analysis-line-deposit',values:result.rows.map(row=>row.depositReturn),label:'Lokata'}],true);
+  renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'}],true);
 }
 function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   const svg=document.querySelector(`#${svgId}`),empty=document.querySelector(`#${emptyId}`),values=series.flatMap(item=>item.values.filter(Number.isFinite));
@@ -665,11 +665,22 @@ function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
   if(rows.length<1||!values.length){svg.classList.add('hidden');empty.classList.remove('hidden');return}
   svg.classList.remove('hidden');empty.classList.add('hidden');
   let low=Math.min(0,...values),high=Math.max(0,...values);if(low===high){low-=1;high+=1}const pad=(high-low)*.12;low-=pad;high+=pad;
-  const left=100,right=740,top=22,bottom=210,x=index=>rows.length===1?(left+right)/2:left+(right-left)*index/(rows.length-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),format=asPercent?percent:money;
+  const left=130,right=740,top=22,bottom=210,x=index=>rows.length===1?(left+right)/2:left+(right-left)*index/(rows.length-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),format=asPercent?percent:money;
   let markup='';
-  for(let index=0;index<3;index++){const value=high-(high-low)*index/2,pos=top+(bottom-top)*index/2;markup+=`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" x="0" y="${pos+4}">${format(value)}</text>`}
+  for(let index=0;index<3;index++){const value=high-(high-low)*index/2,pos=top+(bottom-top)*index/2;markup+=`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" text-anchor="end" x="112" y="${pos+4}">${format(value)}</text>`}
   for(const item of series){let segment=[];const flush=()=>{if(segment.length)markup+=`<polyline class="analysis-series ${item.className}" points="${segment.join(' ')}"/>`;segment=[]};item.values.forEach((value,index)=>{if(!Number.isFinite(value)){flush();return}const cx=x(index),cy=y(value);segment.push(`${cx},${cy}`);markup+=`<circle class="analysis-point ${item.className}" cx="${cx}" cy="${cy}" r="4"><title>${rows[index].date} · ${item.label}: ${format(value)}</title></circle>`});flush()}
   markup+=`<text class="history-label" x="${left}" y="244">${rows[0].date}</text><text class="history-label" text-anchor="end" x="${right}" y="244">${rows.at(-1).date}</text><text class="history-label" text-anchor="middle" x="420" y="258">Data</text><text class="history-label" text-anchor="middle" transform="translate(15 116) rotate(-90)">${asPercent?'Stopa (%)':'Kwota (zł)'}</text>`;svg.innerHTML=markup;
+}
+async function refreshInflation() {
+  try {
+    const response=await fetch('/api/inflation',{cache:'no-store'});
+    if(!response.ok)throw Error('Inflation data unavailable');
+    monthlyInflation=(await response.json()).inflation||{};
+    document.querySelector('#inflationUnavailable').classList.toggle('hidden',Object.keys(monthlyInflation).length>0);
+    if(!document.querySelector('#analysisView').classList.contains('hidden'))renderAnalysis();
+  } catch {
+    document.querySelector('#inflationUnavailable').classList.remove('hidden');
+  }
 }
 async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) {
   const symbols=[...new Set(tickers)].filter(ticker=>getCompany(ticker));
@@ -1177,10 +1188,6 @@ document.querySelector('#quarterRows').addEventListener('change',event=>{
   if(value===null)delete analysisInflation[input.dataset.quarter];else analysisInflation[input.dataset.quarter]=value;
   saveAnalysisStorage();renderAnalysis();
 });
-document.querySelector('#depositRate').addEventListener('change',event=>{
-  const value=event.target.valueAsNumber/100;if(!Number.isFinite(value)||value<0||value>10){toast('Stopa lokaty musi mieścić się w zakresie od 0% do 1000%.');renderAnalysis();return}
-  depositRate=value;saveAnalysisStorage();renderAnalysis();
-});
 document.querySelectorAll('.period-tab').forEach(button=>button.addEventListener('click',()=> {
   statsPeriod=button.dataset.period;renderStats()
 }));
@@ -1283,6 +1290,7 @@ function toast(message) {
 document.querySelector('#refresh').onclick=()=>refreshPrices(true);
 render();
 refreshDividends();
+refreshInflation();
 refreshPrices();
 setInterval(()=> {
   if(!document.hidden)refreshPrices()

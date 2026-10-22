@@ -22,9 +22,8 @@ test('wpłata zero daje brak procentowego zwrotu zamiast dzielenia przez zero', 
 
 test('pusty kwartał przenosi stan konta z najbliższego wcześniejszego wpisu', () => {
   const result = calculateAnalysis([{ date: '2025-01-15', deposit: 100, balance: 110 }, { date: '2025-07-15', deposit: 20, balance: 140 }]);
-  assert.deepEqual(result.quarters.map(row => row.balance), [110, 110, 140]);
-  assert.equal(result.quarters[1].deposit, 0);
-  assert.equal(result.quarters[1].change, 0);
+  assert.deepEqual(result.quarters.map(row => row.key), ['2025-Q1', '2025-Q3']);
+  assert.deepEqual(result.quarters.map(row => row.balance), [110, 140]);
 });
 
 test('CAGR wynosi zero dla jednego dnia, nawet gdy wpisy mają tę samą datę', () => {
@@ -37,15 +36,29 @@ test('kilka kwartałów sumuje wpłaty, przenosi saldo i wylicza proste porówna
     { date: '2025-01-10', deposit: 100, balance: 110 },
     { date: '2025-03-20', deposit: 50, balance: 170 },
     { date: '2025-10-01', deposit: 50, balance: 240 },
-  ], { '2025-Q1': 0.04, '2025-Q4': 0.08 }, 0.03);
+  ], { '2025-Q1': 0.04, '2025-Q4': 0.08 });
   // Ręcznie: wpłaty 200, ostatnie saldo 240, zysk 40, zwrot 20%; Q1 zmiana 20, Q2/Q3 bez wpisów, Q4 zmiana 20.
   assert.equal(result.totalProfit, 40);
   assert.equal(result.totalReturn, 0.2);
-  assert.deepEqual(result.quarters.map(row => row.change), [20, 0, 0, 20]);
+  assert.deepEqual(result.quarters.map(row => row.change), [20, 20]);
   assert.equal(result.quarters[0].depositsWithInflation, 151.5); // 150 × (1 + 4% × 3/12)
-  assert.equal(result.quarters[3].depositsWithInflation, 216); // 200 × (1 + 8% × 12/12)
+  assert.equal(result.quarters[1].depositsWithInflation, 216); // 200 × (1 + 8% × 12/12)
   assert.equal(result.summary.inflation, 0.06);
+  assert.deepEqual(result.quarters.map(row => row.key), ['2025-Q1', '2025-Q4']);
   assert.deepEqual(normalizeEntries([{ date: '2025-02-30', deposit: 4, balance: 5 }]), []);
+});
+
+test('inflacja pobrana dla miesiąca zasila wiersz i średnią kwartału, a ręczna wartość ma pierwszeństwo', () => {
+  const result = calculateAnalysis([{ date: '2025-02-15', deposit: 100, balance: 100 }], { '2025-Q1': 0.05 }, {
+    '2025-01': 0.02, '2025-02': 0.03, '2025-03': 0.04,
+  });
+  assert.equal(result.rows[0].inflation, 0.05);
+  assert.equal(result.quarters[0].inflation, 0.05);
+  const automatic = calculateAnalysis([{ date: '2025-02-15', deposit: 100, balance: 100 }], {}, {
+    '2025-01': 0.02, '2025-02': 0.03, '2025-03': 0.04,
+  });
+  assert.equal(automatic.rows[0].inflation, 0.03);
+  assert.equal(automatic.quarters[0].inflation, 0.03);
 });
 
 test('stara kopia bez pól analizy i poprawna nowa kopia są akceptowane', () => {

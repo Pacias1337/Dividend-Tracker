@@ -16,6 +16,36 @@ const tickers =  {
 let cache;
 const dividendCache = new Map();
 const dividendCacheTtl = 6 * 60 * 60 * 1000;
+let inflationCache;
+function parseGusInflation(csv) {
+  const result = {};
+  for (const line of csv.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+    const cells = line.split(';').map(cell => cell.trim().replace(/^"|"$/g, ''));
+    if (!/^analogiczny miesi.* poprzedniego roku/i.test(cells[2] ?? '')) continue;
+    const year = Number(cells[3]), month = Number(cells[4]), rawValue = cells[5]?.replace(',', '.');
+    const value = rawValue?.trim() ? Number(rawValue) : NaN;
+    if (Number.isInteger(year) && month >= 1 && month <= 12 && Number.isFinite(value)) result[`${year}-${String(month).padStart(2, '0')}`] = value / 100 - 1;
+  }
+  if (!Object.keys(result).length) throw new Error('Invalid GUS CPI table');
+  return result;
+}
+function findGusCsvUrl(html) {
+  const links = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)];
+  return links.find(([, href, label]) => /\bcsv\b/i.test(label.replace(/<[^>]*>/g, '')) || /\.csv(?:[?#]|$)/i.test(href))?.[1]?.replaceAll('&amp;', '&');
+}
+async function getInflation() {
+  if (inflationCache && Date.now() - inflationCache.time < dividendCacheTtl) return inflationCache.data;
+  const page = await fetch('https://publikacje.new.stat.gov.pl/portal-publikacje/miesieczne-wskazniki-cen-towarow-i-uslug-konsumpcyjnych-od-1982-r', { signal: AbortSignal.timeout(12000) });
+  if (!page.ok) throw new Error('GUS publication unavailable');
+  const html = await page.text();
+  const csvPath = findGusCsvUrl(html);
+  if (!csvPath) throw new Error('GUS CSV link unavailable');
+  const csv = await fetch(new URL(csvPath, 'https://publikacje.new.stat.gov.pl'), { signal: AbortSignal.timeout(12000) });
+  if (!csv.ok) throw new Error('GUS CPI data unavailable');
+  const data = parseGusInflation(await csv.text());
+  inflationCache = { time: Date.now(), data };
+  return data;
+}
 const json = (res, status, value) =>  {
   res.writeHead(status,  {
     'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'
@@ -181,6 +211,10 @@ const server = http.createServer(async (req, res) =>  {
       });
     }
   }
+  if (pathname === '/api/inflation') {
+    try { return json(res, 200, { provider: 'GUS', updatedAt: new Date().toISOString(), inflation: await getInflation() }); }
+    catch { return json(res, 502, { error: 'Dane o inflacji z GUS są chwilowo niedostępne.' }); }
+  }
   if (pathname === '/api/dividends')  {
     const symbols = [...new Set((requestUrl.searchParams.get('symbols') ?? '') .split(',') .map((ticker) => ticker.trim().toUpperCase()) .filter((ticker) => Object.hasOwn(tickers, ticker)))].slice(0, 70); try  {
       return json(res, 200, await getDividends(symbols));
@@ -203,11 +237,11 @@ const server = http.createServer(async (req, res) =>  {
       });
     }
   }
-  if (pathname === '/app.css' || pathname === '/app.js')  {
+  if (pathname === '/app.css' || pathname === '/app.js' || pathname === '/analysis.js')  {
     try  {
-      const isCss = pathname === '/app.css'; res.writeHead(200,  {
+      const isCss = pathname === '/app.css', file = isCss ? 'app.css' : pathname === '/analysis.js' ? 'analysis.js' : 'app.js'; res.writeHead(200,  {
         'content-type': `${isCss ? 'text/css' : 'text/javascript'}; charset=utf-8`, 'cache-control': 'no-store'
-      }); return res.end(await readFile(path.join(__dirname, isCss ? 'app.css' : 'app.js')));
+      }); return res.end(await readFile(path.join(__dirname, file)));
     }
     catch  {
       return json(res, 500,  {
@@ -257,6 +291,8 @@ module.exports =  {
   fetchDividend,
   getDividends,
   getLastPaidDividend,
+  findGusCsvUrl,
+  parseGusInflation,
   selectApprovedDividend,
   selectLastPaidDividend,
   server,
