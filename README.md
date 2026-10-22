@@ -75,11 +75,11 @@ Statystyki portfela i ręczny Dziennik inwestora są dostępne w osobnych zakła
 
 | Technologia | Zastosowanie |
 |---|---|
-| ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white) **Node.js** | Lokalny serwer HTTP, endpointy danych rynkowych i uruchamianie testów bez dodatkowych zależności runtime. |
-| ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black) **Vanilla JavaScript** | Interfejs, obliczenia portfela, analiza wpłat, symulator IKE i bezpieczny zapis w przeglądarce. |
-| ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) **HTML5** | Semantyczna struktura widoków, formularzy, tabel i dostępnych kontrolek. |
-| ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) **Tailwind CSS 4** | Budowanie i minifikacja arkusza stylów z `src/styles.css` do `app.css`. |
-| ![Node test](https://img.shields.io/badge/node%3Atest-339933?logo=nodedotjs&logoColor=white) **node:test** | Testy logiki dywidend, analizy, symulatora i bezpiecznego storage — bez zewnętrznego frameworka. |
+| ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white) | Lokalny serwer HTTP, endpointy danych rynkowych i uruchamianie testów bez dodatkowych zależności runtime. |
+| ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black) | Interfejs, obliczenia portfela, analiza wpłat, symulator IKE i bezpieczny zapis w przeglądarce. |
+| ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) | Semantyczna struktura widoków, formularzy, tabel i dostępnych kontrolek. |
+| ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) | Budowanie i minifikacja arkusza stylów z `src/styles.css` do `app.css`. |
+| ![Node test](https://img.shields.io/badge/node%3Atest-339933?logo=nodedotjs&logoColor=white) | Testy logiki dywidend, analizy, symulatora i bezpiecznego storage — bez zewnętrznego frameworka. |
 | **Yahoo Finance · Agent Rynku · GUS** | Źródła notowań, informacji o dywidendach oraz miesięcznych danych inflacyjnych. |
 
 ### Architektura w skrócie
