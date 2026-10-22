@@ -1268,6 +1268,8 @@ function setView(view) {
   updateNavigationDock()
 }
 const themeToggle=document.querySelector('#themeToggle');
+const portfolioFooter=document.querySelector('#portfolioView .foot');
+for(const view of ['statsView','journalView','simulationView']){const footer=portfolioFooter.cloneNode(true);footer.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));document.querySelector(`#${view}`).append(footer)}
 const savedTheme=safeStorage.get('dividend-ike-theme');
 let darkMode=savedTheme==='dark'||savedTheme===null&&matchMedia('(prefers-color-scheme: dark)').matches;
 function setTheme(dark) {

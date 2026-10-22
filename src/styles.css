@@ -2633,6 +2633,12 @@ html {scroll-behavior:smooth}
 .dark-mode .topright .settings-toggle {background:transparent;color:var(--text)}
 html {scrollbar-width:none}
 html::-webkit-scrollbar {display:none}
+.analysis-panel {margin-top:26px}
+#statsView > .panel + .panel {margin-top:28px!important}
+.history-chart-wrap {margin-top:16px}
+.analysis-panel .history-chart-wrap {margin-top:16px}
+.table-preview {margin-top:8px}
+@media(max-width:720px){.analysis-panel{margin-top:22px}#statsView > .panel + .panel{margin-top:22px!important}.history-chart-wrap{margin-top:12px}}
 .calendar-popover {position:absolute;z-index:30;top:calc(100% + 8px);left:0;width:min(300px,calc(100vw - 48px));padding:12px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);box-shadow:0 18px 48px #0004;animation:picker-unfold .22s ease both}
 .calendar-popover header {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .calendar-popover header button,.calendar-grid button {display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:10px;background:transparent;color:var(--text);cursor:pointer}
