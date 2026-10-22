@@ -28,6 +28,7 @@ Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplik
 - **Alokacja kapitału według sektorów** na wykresie kołowym
 - **Lista Twoich spółek**: liczba akcji, kurs, łączna wartość, dywidenda na akcję, szacowana dywidenda roczna i stopa dywidendy
 - **Statystyki**: zmiana wartości portfela w czasie oraz historia zmian
+- **Analiza**: porównanie sumy wpłat z wartością konta, zyskiem, stopą zwrotu, ręcznie wpisaną inflacją i lokatą; dane wpisuje użytkownik, a aplikacja zapisuje je lokalnie
 - **Tryb jasny i ciemny**
 - **Kopia zapasowa** portfela do pliku JSON i import na innym urządzeniu
 - **Prywatność**: portfel zostaje w Twojej przeglądarce i nie jest wysyłany na serwer
@@ -49,6 +50,10 @@ Zmiana wartości portfela w czasie i historia zmian.
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
 </p>
+
+### Analiza
+
+Wpisz daty wpłat, kwoty i stan konta, aby śledzić zysk oraz stopę zwrotu. Możesz też uzupełnić inflację dla kwartałów i porównać wynik z lokatą. Widok nie zawiera przykładowych danych.
 
 ## Wymagania
 

@@ -604,10 +604,73 @@ migrateSantanderData();
 let statsPeriod='week';
 let historyStartedAt=localStorage.getItem('dividend-ike-history-started')||new Date().toISOString();
 localStorage.setItem('dividend-ike-history-started',historyStartedAt);
+const depositStorageKey='dividend-ike-deposits',inflationStorageKey='dividend-ike-inflation',depositRateStorageKey='dividend-ike-deposit-rate';
+function readAnalysisStorage(key,fallback) {
+  try { return JSON.parse(localStorage.getItem(key)??JSON.stringify(fallback)) }
+  catch { return fallback }
+}
+let analysisEntries=DividendAnalysis.normalizeEntries(readAnalysisStorage(depositStorageKey,[]));
+let analysisInflation=readAnalysisStorage(inflationStorageKey,{});
+if(!analysisInflation||typeof analysisInflation!=='object'||Array.isArray(analysisInflation))analysisInflation={};
+analysisInflation=Object.fromEntries(Object.entries(analysisInflation).filter(([key,value])=>/^\d{4}-Q[1-4]$/.test(key)&&Number.isFinite(value)&&value>=-1&&value<=10));
+const savedDepositRate=localStorage.getItem(depositRateStorageKey);
+let depositRate=savedDepositRate===null?0.03:Number(savedDepositRate);
+if(!Number.isFinite(depositRate)||depositRate<0||depositRate>10)depositRate=0.03;
+function saveAnalysisStorage() {
+  localStorage.setItem(depositStorageKey,JSON.stringify(analysisEntries));
+  localStorage.setItem(inflationStorageKey,JSON.stringify(analysisInflation));
+  localStorage.setItem(depositRateStorageKey,String(depositRate));
+}
 const money=n=>new Intl.NumberFormat('pl-PL', {
   style: 'currency',currency: 'PLN'
 }).format(n);
 const getCompany=t=>companies.find(c=>c.ticker===t);
+const percent=value=>value===null||!Number.isFinite(value)?'—':`${(value*100).toLocaleString('pl-PL',{maximumFractionDigits:2})}%`;
+const analysisInputDate=date=>new Date(`${date}T12:00:00`).toLocaleDateString('pl-PL');
+function renderAnalysis() {
+  const result=DividendAnalysis.calculateAnalysis(analysisEntries,analysisInflation,depositRate),hasEntries=result.rows.length>0;
+  document.querySelector('#analysisBalance').textContent=hasEntries?money(result.balance):'—';
+  document.querySelector('#analysisBalanceDate').textContent=hasEntries?`Stan na ${result.rows.at(-1).date}`:'Dodaj pierwszy wpis';
+  document.querySelector('#analysisDeposits').textContent=hasEntries?money(result.totalDeposits):'—';
+  document.querySelector('#analysisProfit').textContent=hasEntries?money(result.totalProfit):'—';
+  document.querySelector('#analysisReturn').textContent=percent(result.totalReturn);
+  document.querySelector('#analysisCagr').textContent=hasEntries?percent(result.cagr):'—';
+  const depositRows=document.querySelector('#depositRows');depositRows.replaceChildren();
+  document.querySelector('#depositEmpty').classList.toggle('hidden',hasEntries);
+  for(const [index,row] of result.rows.entries()) {
+    const tr=document.createElement('tr');
+    [analysisInputDate(row.date),money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.profit),percent(row.returnRate),percent(row.inflation),percent(row.depositReturn)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
+    const actions=document.createElement('td'),edit=document.createElement('button'),remove=document.createElement('button');
+    edit.type=remove.type='button';edit.className='edit';remove.className='delete';edit.textContent='Edytuj';remove.textContent='Usuń';edit.dataset.editDeposit=index;remove.dataset.deleteDeposit=index;edit.setAttribute('aria-label',`Edytuj wpis ${row.date}`);remove.setAttribute('aria-label',`Usuń wpis ${row.date}`);actions.append(edit,remove);tr.append(actions);depositRows.append(tr);
+  }
+  const quarterRows=document.querySelector('#quarterRows');quarterRows.replaceChildren();
+  document.querySelector('#quarterEmpty').classList.toggle('hidden',result.quarters.length>0);
+  for(const row of result.quarters) {
+    const tr=document.createElement('tr');
+    [row.key,money(row.deposit),money(row.cumulativeDeposits),money(row.balance),money(row.change),percent(row.returnRate)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});
+    const inflationCell=document.createElement('td'),inflationInput=document.createElement('input');inflationInput.type='number';inflationInput.min='-100';inflationInput.max='1000';inflationInput.step='any';inflationInput.className='quarter-inflation';inflationInput.value=row.inflation===null?'':String(row.inflation*100);inflationInput.setAttribute('aria-label',`Inflacja r/r dla ${row.key}, procent`);inflationInput.dataset.quarter=row.key;inflationCell.append(inflationInput);tr.append(inflationCell);
+    const adjusted=document.createElement('td');adjusted.textContent=row.depositsWithInflation===null?'—':money(row.depositsWithInflation);tr.append(adjusted);quarterRows.append(tr);
+  }
+  if(result.quarters.length) {
+    const row=result.summary,tr=document.createElement('tr');tr.className='analysis-total';
+    [ 'Razem / Średnia',money(row.deposit),money(row.cumulativeDeposits),row.balance===null?'—':money(row.balance),money(row.change),percent(row.returnRate),percent(row.inflation),row.depositsWithInflation===null?'—':money(row.depositsWithInflation) ].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});quarterRows.append(tr);
+  }
+  document.querySelector('#depositRate').value=String(depositRate*100);
+  renderAnalysisChart('investmentChart','investmentChartEmpty',result.rows,[{className:'analysis-line-balance',values:result.rows.map(row=>row.balance),label:'Stan konta'},{className:'analysis-line-deposits',values:result.rows.map(row=>row.cumulativeDeposits),label:'Suma wpłat'}],false);
+  renderAnalysisChart('returnsChart','returnsChartEmpty',result.rows,[{className:'analysis-line-return',values:result.rows.map(row=>row.returnRate),label:'Stopa zwrotu'},{className:'analysis-line-inflation',values:result.rows.map(row=>row.inflation),label:'Inflacja'},{className:'analysis-line-deposit',values:result.rows.map(row=>row.depositReturn),label:'Lokata'}],true);
+}
+function renderAnalysisChart(svgId,emptyId,rows,series,asPercent) {
+  const svg=document.querySelector(`#${svgId}`),empty=document.querySelector(`#${emptyId}`),values=series.flatMap(item=>item.values.filter(Number.isFinite));
+  svg.replaceChildren();
+  if(rows.length<1||!values.length){svg.classList.add('hidden');empty.classList.remove('hidden');return}
+  svg.classList.remove('hidden');empty.classList.add('hidden');
+  let low=Math.min(0,...values),high=Math.max(0,...values);if(low===high){low-=1;high+=1}const pad=(high-low)*.12;low-=pad;high+=pad;
+  const left=100,right=740,top=22,bottom=210,x=index=>rows.length===1?(left+right)/2:left+(right-left)*index/(rows.length-1),y=value=>bottom-(value-low)/(high-low)*(bottom-top),format=asPercent?percent:money;
+  let markup='';
+  for(let index=0;index<3;index++){const value=high-(high-low)*index/2,pos=top+(bottom-top)*index/2;markup+=`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" x="0" y="${pos+4}">${format(value)}</text>`}
+  for(const item of series){let segment=[];const flush=()=>{if(segment.length)markup+=`<polyline class="analysis-series ${item.className}" points="${segment.join(' ')}"/>`;segment=[]};item.values.forEach((value,index)=>{if(!Number.isFinite(value)){flush();return}const cx=x(index),cy=y(value);segment.push(`${cx},${cy}`);markup+=`<circle class="analysis-point ${item.className}" cx="${cx}" cy="${cy}" r="4"><title>${rows[index].date} · ${item.label}: ${format(value)}</title></circle>`});flush()}
+  markup+=`<text class="history-label" x="${left}" y="244">${rows[0].date}</text><text class="history-label" text-anchor="end" x="${right}" y="244">${rows.at(-1).date}</text><text class="history-label" text-anchor="middle" x="420" y="258">Data</text><text class="history-label" text-anchor="middle" transform="translate(15 116) rotate(-90)">${asPercent?'Stopa (%)':'Kwota (zł)'}</text>`;svg.innerHTML=markup;
+}
 async function refreshDividends(tickers=portfolio.map(holding=>holding.ticker)) {
   const symbols=[...new Set(tickers)].filter(ticker=>getCompany(ticker));
   if(!symbols.length)return;
@@ -1056,12 +1119,15 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
   const holding = portfolio.find((item) => item.ticker === ticker); recordActivity('Usunięto pozycję', ticker, holding?.shares || 0); portfolio = portfolio.filter((item) => item.ticker !== ticker); saveHistorySnapshot(true); render();
 });
 function setView(view) {
-  const stats=view==='stats';
-  document.querySelector('#portfolioView').classList.toggle('hidden',stats);
+  const stats=view==='stats',analysis=view==='analysis';
+  document.querySelector('#portfolioView').classList.toggle('hidden',stats||analysis);
   document.querySelector('#statsView').classList.toggle('hidden',!stats);
-  document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats));
+  document.querySelector('#analysisView').classList.toggle('hidden',!analysis);
+  document.querySelector('#portfolioTab').setAttribute('aria-selected',String(!stats&&!analysis));
   document.querySelector('#statsTab').setAttribute('aria-selected',String(stats));
-  if(stats)renderStats()
+  document.querySelector('#analysisTab').setAttribute('aria-selected',String(analysis));
+  if(stats)renderStats();
+  if(analysis)renderAnalysis();
 }
 const themeToggle=document.querySelector('#themeToggle');
 let darkMode=localStorage.getItem('dividend-ike-theme')==='dark';
@@ -1076,6 +1142,45 @@ setTheme(darkMode);
 themeToggle.addEventListener('click',()=>setTheme(!darkMode));
 document.querySelector('#portfolioTab').addEventListener('click',()=>setView('portfolio'));
 document.querySelector('#statsTab').addEventListener('click',()=>setView('stats'));
+document.querySelector('#analysisTab').addEventListener('click',()=>setView('analysis'));
+const depositDialog=document.querySelector('#depositDialog'),depositForm=document.querySelector('#depositForm');
+let editingDepositIndex=null;
+function openDepositForm(index=null) {
+  editingDepositIndex=index;
+  const currentValue=portfolio.reduce((sum,item)=>sum+(Number.isFinite(prices[item.ticker])&&prices[item.ticker]>0?item.shares*prices[item.ticker]:0),0);
+  document.querySelector('#depositFormTitle').textContent=index===null?'Dodaj wpis':'Edytuj wpis';
+  document.querySelector('#depositDate').value=index===null?new Date().toISOString().slice(0,10):analysisEntries[index].date;
+  document.querySelector('#depositAmount').value=index===null?'':String(analysisEntries[index].deposit);
+  document.querySelector('#depositBalance').value=index===null?String(currentValue):String(analysisEntries[index].balance);
+  depositDialog.showModal();
+}
+document.querySelector('#addDeposit').addEventListener('click',()=>openDepositForm());
+document.querySelector('#closeDeposit').addEventListener('click',()=>depositDialog.close());
+document.querySelector('#cancelDeposit').addEventListener('click',()=>depositDialog.close());
+depositForm.addEventListener('submit',event=>{
+  event.preventDefault();
+  const entry={date:document.querySelector('#depositDate').value,deposit:document.querySelector('#depositAmount').valueAsNumber,balance:document.querySelector('#depositBalance').valueAsNumber};
+  if(!DividendAnalysis.validEntry(entry)){toast('Wpisz poprawną datę oraz kwoty nieujemne i skończone.');return}
+  if(editingDepositIndex===null&&analysisEntries.length>=DividendAnalysis.MAX_ENTRIES){toast('Możesz zapisać maksymalnie 400 wpisów.');return}
+  const entries=[...analysisEntries];if(editingDepositIndex===null)entries.push(entry);else entries[editingDepositIndex]=entry;
+  analysisEntries=DividendAnalysis.normalizeEntries(entries);saveAnalysisStorage();depositDialog.close();renderAnalysis();
+});
+document.querySelector('#depositRows').addEventListener('click',event=>{
+  const button=event.target.closest('[data-edit-deposit], [data-delete-deposit]');if(!button)return;
+  const index=Number(button.dataset.editDeposit??button.dataset.deleteDeposit);if(!Number.isInteger(index)||index<0||index>=analysisEntries.length)return;
+  if(button.hasAttribute('data-edit-deposit')){openDepositForm(index);return}
+  analysisEntries.splice(index,1);saveAnalysisStorage();renderAnalysis();
+});
+document.querySelector('#quarterRows').addEventListener('change',event=>{
+  const input=event.target.closest('[data-quarter]');if(!input||!/^\d{4}-Q[1-4]$/.test(input.dataset.quarter))return;const value=input.value===''?null:input.valueAsNumber/100;
+  if(value!==null&&(!Number.isFinite(value)||value< -1||value>10)){toast('Inflacja musi mieścić się w zakresie od −100% do 1000%.');renderAnalysis();return}
+  if(value===null)delete analysisInflation[input.dataset.quarter];else analysisInflation[input.dataset.quarter]=value;
+  saveAnalysisStorage();renderAnalysis();
+});
+document.querySelector('#depositRate').addEventListener('change',event=>{
+  const value=event.target.valueAsNumber/100;if(!Number.isFinite(value)||value<0||value>10){toast('Stopa lokaty musi mieścić się w zakresie od 0% do 1000%.');renderAnalysis();return}
+  depositRate=value;saveAnalysisStorage();renderAnalysis();
+});
 document.querySelectorAll('.period-tab').forEach(button=>button.addEventListener('click',()=> {
   statsPeriod=button.dataset.period;renderStats()
 }));
@@ -1132,6 +1237,7 @@ function validateBackup(backup) {
   if(!data.portfolio.every(h=>h&&known.has(h.ticker)&&!seen.has(h.ticker)&&seen.add(h.ticker)&&Number.isFinite(h.shares)&&h.shares>=0&&(h.dividend==null||Number.isFinite(h.dividend)&&h.dividend>=0)))return false;
   if(!data.history.every(h=>h&&validDate(h.at)&&Number.isFinite(h.value)&&h.value>=0&&Number.isFinite(h.annualIncome)&&h.annualIncome>=0))return false;
   if(!data.activity.every(a=>a&&validDate(a.at)&&known.has(a.ticker)&&['Dodano pozycję','Zaktualizowano pozycję','Usunięto pozycję'].includes(a.action)&&Number.isFinite(a.shares)&&a.shares>=0))return false;
+  if(!DividendAnalysis.validBackupFields(data))return false;
   return Object.entries(data.prices).every(([ticker,value])=>known.has(ticker)&&Number.isFinite(value)&&value>0)&&Object.entries(data.priceTimes).every(([ticker,value])=>known.has(ticker)&&validDate(value))
 }
 const settingsDialog=document.querySelector('#settingsDialog');
@@ -1143,7 +1249,7 @@ settingsDialog.addEventListener('click',e=> {
 document.querySelector('#exportBackup').addEventListener('click',()=> {
   const backup= {
     app: 'Dividend Tracker',version: 1,createdAt: new Date().toISOString(),data:  {
-      portfolio,prices,priceTimes,history: portfolioHistory,activity: portfolioActivity,historyStartedAt,theme: darkMode?'dark': 'light'
+      portfolio,prices,priceTimes,history: portfolioHistory,activity: portfolioActivity,historyStartedAt,theme: darkMode?'dark': 'light',deposits: analysisEntries,inflation: analysisInflation,depositRate
     }
   },url=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)], {
     type: 'application/json'
@@ -1160,8 +1266,8 @@ document.querySelector('#backupFile').addEventListener('change',async e=> {
     const backup=JSON.parse(await file.text());if(!validateBackup(backup)) {
       toast('Plik nie jest prawidłową kopią Dividend Tracker');return
     }
-    if(!confirm('Przywrócenie kopii zastąpi obecny portfel i historię. Kontynuować?'))return;const values= {
-      'dividend-ike-portfolio': backup.data.portfolio,'dividend-ike-prices': backup.data.prices,'dividend-ike-price-times': backup.data.priceTimes,'dividend-ike-history': backup.data.history,'dividend-ike-activity': backup.data.activity,'dividend-ike-history-started': backup.data.historyStartedAt,'dividend-ike-theme': backup.data.theme
+    if(!confirm('Przywrócenie kopii zastąpi obecny portfel, historię i dane analizy. Kontynuować?'))return;const values= {
+      'dividend-ike-portfolio': backup.data.portfolio,'dividend-ike-prices': backup.data.prices,'dividend-ike-price-times': backup.data.priceTimes,'dividend-ike-history': backup.data.history,'dividend-ike-activity': backup.data.activity,'dividend-ike-history-started': backup.data.historyStartedAt,'dividend-ike-theme': backup.data.theme,'dividend-ike-deposits': backup.data.deposits??[],'dividend-ike-inflation': backup.data.inflation??{},'dividend-ike-deposit-rate': backup.data.depositRate??0.03
     };for(const [key,value] of Object.entries(values))localStorage.setItem(key,typeof value==='string'?value: JSON.stringify(value));location.reload()
   }
   catch {

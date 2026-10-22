@@ -1311,6 +1311,149 @@ body.dark-mode  {
     justify-content:center
   }
 }
+.analysis-cards  {
+  grid-template-columns:repeat(5,minmax(0,1fr))
+}
+.analysis-panel  {
+  margin-top:20px
+}
+.analysis-tablewrap  {
+  overflow-x:auto
+}
+.analysis-tablewrap table  {
+  min-width:900px
+}
+.analysis-empty  {
+  margin:0;
+  padding:22px;
+  color:var(--muted);
+  font-size:13px
+}
+.analysis-total  {
+  font-weight:700;
+  border-top:2px solid var(--line)
+}
+.analysis-rate  {
+  display:grid;
+  gap:6px;
+  min-width:185px;
+  color:var(--muted);
+  font-size:12px
+}
+.analysis-rate input,.quarter-inflation,.deposit-form-fields input  {
+  min-width:0;
+  width:100%;
+  height:40px;
+  border:1px solid #dce4de;
+  border-radius:9px;
+  padding:8px 10px;
+  background:white;
+  color:#17241e
+}
+.quarter-inflation  {
+  width:110px
+}
+.analysis-chart  {
+  min-height:190px
+}
+.analysis-series  {
+  fill:none;
+  stroke-width:3;
+  stroke-linecap:round;
+  stroke-linejoin:round
+}
+.analysis-point  {
+  stroke:white;
+  stroke-width:2
+}
+.analysis-line-balance,.analysis-line-return  {
+  stroke:#168256;
+  fill:#168256
+}
+.analysis-line-deposits  {
+  stroke:#7d8990;
+  fill:#7d8990
+}
+.analysis-line-inflation  {
+  stroke:#c17a20;
+  fill:#c17a20
+}
+.analysis-line-deposit  {
+  stroke:#6676b8;
+  fill:#6676b8
+}
+.analysis-legend  {
+  display:flex;
+  flex-wrap:wrap;
+  gap:18px;
+  padding:0 22px 18px;
+  color:var(--muted);
+  font-size:12px
+}
+.analysis-legend span  {
+  display:flex;
+  align-items:center;
+  gap:7px
+}
+.analysis-legend i  {
+  width:17px;
+  height:3px;
+  border-radius:2px
+}
+.legend-balance,.legend-return  { background:#168256 }
+.legend-deposits  { background:#7d8990 }
+.legend-inflation  { background:#c17a20 }
+.legend-deposit  { background:#6676b8 }
+.deposit-dialog  {
+  width:min(480px,calc(100vw - 32px))
+}
+.deposit-form-fields  {
+  display:grid;
+  gap:13px;
+  margin-bottom:18px
+}
+.deposit-form-fields label  {
+  display:grid;
+  gap:6px;
+  color:var(--muted);
+  font-size:12px
+}
+.deposit-dialog .backup-actions  {
+  display:flex;
+  justify-content:flex-end
+}
+.deposit-dialog .backup-button,.deposit-dialog .add  {
+  min-height:42px
+}
+.dark-mode .analysis-rate input,.dark-mode .quarter-inflation,.dark-mode .deposit-form-fields input  {
+  background:#15221b;
+  color:#e7eee9;
+  border-color:#34463a
+}
+@media(max-width:760px)  {
+  .analysis-cards  {
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  .analysis-panel .panelhead  {
+    align-items:flex-start;
+    gap:14px
+  }
+}
+@media(max-width:520px)  {
+  .analysis-cards .stats-card:last-child  {
+    grid-column:span 2
+  }
+  .analysis-panel .panelhead  {
+    flex-direction:column
+  }
+  .analysis-rate  {
+    width:100%
+  }
+  .analysis-legend  {
+    gap:10px 16px;
+    padding-left:16px
+  }
+}
 @media(max-width:900px)  {
   .summary  {
     grid-template-columns:repeat(2,minmax(0,1fr))

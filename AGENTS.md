@@ -21,9 +21,10 @@ Skąd pochodzą dane:
 
 - Node.js (serwer w `server.js`, bez zewnętrznych paczek w działaniu aplikacji)
 - HTML, JavaScript (`index.html`, `app.js`)
+- Moduł obliczeń widoku Analiza (`analysis.js`)
 - Tailwind CSS 4: źródło w `src/styles.css`, wynik w `app.css`
 - Yahoo Finance (ceny i zapasowo dywidendy) oraz Agent Rynku (dywidendy z uchwał WZA)
-- Testy: wbudowany `node:test`, plik `test/dividends.test.js`
+- Testy: wbudowany `node:test`, pliki `test/dividends.test.js` i `test/analysis.test.js`
 - Dane użytkownika są zapisywane w `localStorage` przeglądarki, serwer niczego nie przechowuje
 
 ## Uruchamianie
@@ -43,6 +44,7 @@ Domyślny adres to `http://127.0.0.1:4173`. Jeśli port jest zajęty i nie ustaw
 ## Czego nie ruszać
 
 - Klucze w `localStorage`: `dividend-ike-portfolio`, `dividend-ike-prices`, `dividend-ike-price-times`, `dividend-ike-history`, `dividend-ike-history-started`, `dividend-ike-activity`, `dividend-ike-theme`. Zmiana nazwy oznacza, że użytkownik traci swój portfel.
+- Dane widoku Analiza są przechowywane lokalnie pod kluczami `dividend-ike-deposits` (maksymalnie 400 wpisów `{ date, deposit, balance }`), `dividend-ike-inflation` (roczne stopy inflacji dla kwartałów) i `dividend-ike-deposit-rate` (roczna stopa lokaty, domyślnie 3%). Ustawienia są opcjonalnymi polami kopii zapasowej v1: `inflation` i `depositRate`, a wpisy wpłat są w `deposits`.
 - Format kopii zapasowej (`app: 'Dividend Tracker'`, `version: 1`) oraz funkcję `validateBackup`. Stare kopie muszą dalej się importować. Funkcja uznaje za znane także ticker `SPL` (na potrzeby starych kopii), więc go stamtąd nie usuwaj.
 - Kształt odpowiedzi `/api/quotes`: `quotes.<TICKER>.price`, `currency`, `asOf`.
 - Kształt odpowiedzi `/api/dividends`: `dividends.<TICKER>` to albo `null`, albo obiekt z polami `amount`, `year`, `status` (`approved` lub `last-paid`), `asOf`, `sourceUrl`. Front (`refreshDividends` w `app.js`) na tym polega.
