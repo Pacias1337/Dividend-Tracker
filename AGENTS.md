@@ -30,6 +30,8 @@ Skąd pochodzą dane:
 
 ## Uruchamianie
 
+Aplikacja wymaga Node.js 18 lub nowszego. Budowa stylów wymaga Node.js 20+ i pnpm 11.25; nie jest potrzebna do samego uruchomienia aplikacji.
+
 ```sh
 npm start
 ```

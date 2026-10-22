@@ -53,8 +53,9 @@ Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wp
 
 ## Wymagania
 
-- Node.js 18 lub nowszy
+- Uruchomienie aplikacji: Node.js 18 lub nowszy
 - Połączenie z internetem do pobierania notowań i danych o dywidendach
+- Budowa stylów: Node.js 20 lub nowszy oraz pnpm 11.25
 
 ## Uruchomienie
 
