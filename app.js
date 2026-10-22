@@ -861,7 +861,7 @@ function render() {
     const calculations=AppCore.calculateHolding(holding.shares,price,dividend),
     income=calculations.income,
     yieldRate=calculations.yieldRate,
-    warning=yieldRate>10?'<button type="button" class="yield-warning" aria-label="Uwaga: stopa dywidendy powyżej 10%. Może to być pułapka dywidendowa." data-tooltip="Stopa dywidendy przekracza 10%. Może wynikać z jednorazowej wypłaty, problemów spółki lub spadku kursu. Sprawdź, czy dywidenda jest trwała.">!</button>': '';
+    warning='';
     const priceTitle=priceTimes[c.ticker]?`Ostatnie notowanie: ${new Date(priceTimes[c.ticker]).toLocaleString('pl-PL')}`:'Brak czasu notowania';
     const dividendAmount=c.distributes===false&&holding.year!=='własna'?'—':`${roundDividend(dividend).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})} zł`;
     row.innerHTML=`
@@ -1470,11 +1470,8 @@ const backupDateStorageKey='dividend-ike-backup-date';
 function updateBackupDate() {
   const value=safeStorage.get(backupDateStorageKey),time=Date.parse(value),days=Number.isFinite(time)?Math.max(0,Math.floor((Date.now()-time)/86400000)):null;
   document.querySelector('#backupDateStatus').textContent=days===null?'Nie zapisano jeszcze kopii zapasowej.':`Ostatnia kopia: ${days===0?'dzisiaj':days===1?'1 dzień temu':`${days} dni temu`}.`;
-  document.querySelector('#backupReminder').classList.toggle('hidden',!portfolio.length||days!==null&&days<=30);
 }
 document.querySelector('#settingsToggle').addEventListener('click',()=>{updateBackupDate();settingsDialog.showModal()});
-document.querySelector('#openBackupSettings').addEventListener('click',()=>{updateBackupDate();settingsDialog.showModal()});
-document.querySelector('#dismissBackupReminder').addEventListener('click',()=>document.querySelector('#backupReminder').classList.add('hidden'));
 document.querySelector('#closeSettings').addEventListener('click',()=>settingsDialog.close());
 settingsDialog.addEventListener('click',e=> {
   if(e.target===settingsDialog)settingsDialog.close()

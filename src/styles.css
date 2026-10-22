@@ -519,6 +519,11 @@ td a  {
   background:#ffe3a0;
   color:#784200
 }
+.yield {white-space:nowrap;min-width:100px;padding-right:14px!important}
+.yield .yield-warning {display:inline-grid;flex:0 0 18px;margin-left:10px;vertical-align:middle;transform:none;position:relative}
+table:has(#rows) {min-width:980px}
+table:has(#rows) tbody td:last-child {min-width:100px;white-space:nowrap}
+@media(max-width:760px){table:has(#rows){min-width:0}table:has(#rows) tbody td:last-child{min-width:0}}
 .yield-tooltip  {
   position:fixed;
   z-index:10;
@@ -2633,6 +2638,7 @@ html {scroll-behavior:smooth}
 .dark-mode .topright .settings-toggle {background:transparent;color:var(--text)}
 html {scrollbar-width:none}
 html::-webkit-scrollbar {display:none}
+#backupReminder {display:none!important}
 .analysis-panel {margin-top:26px}
 #statsView > .panel + .panel {margin-top:28px!important}
 .history-chart-wrap {margin-top:16px}

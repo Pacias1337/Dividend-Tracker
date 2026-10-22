@@ -3,6 +3,14 @@
 Prosty tracker portfela dywidendowego GPW. Aplikacja działa lokalnie w przeglądarce, a portfel i historia pozostają zapisane na tym urządzeniu.
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-339933?logo=nodedotjs&logoColor=white" alt="Node.js 18+">
+  <img src="https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?logo=javascript&logoColor=black" alt="JavaScript">
+  <img src="https://img.shields.io/badge/HTML5-semantic-E34F26?logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS 4">
+  <img src="https://img.shields.io/badge/Tests-node%3Atest-339933?logo=nodedotjs&logoColor=white" alt="Node test">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/dashboard_mixtheme.jpg" alt="Dividend Tracker w trybie jasnym i ciemnym" width="900">
 </p>
 
@@ -27,11 +35,12 @@ Dividend Tracker rozwijam hobbystycznie i udostępniam bezpłatnie. Jeśli aplik
 - **Wartość portfela** i średnia stopa dywidendy liczone z aktualnych kursów
 - **Alokacja kapitału według sektorów** na wykresie kołowym
 - **Lista Twoich spółek**: liczba akcji, kurs, łączna wartość, dywidenda na akcję, szacowana dywidenda roczna i stopa dywidendy
-- **Statystyki i analiza** w jednej zakładce: historia portfela, dziennik wpłat, inflacja i roczny zwrot XIRR uwzględniający daty wpłat
+- **Statystyki** wyliczane na bieżąco z portfela: wartość, zmiana w czasie, szacowana dywidenda i stopa dywidendy
+- **Dziennik inwestora**: ręcznie wprowadzane wpłaty i stan konta, podsumowania kwartalne, wykresy, inflacja oraz zwrot XIRR uwzględniający daty wpłat
+- **Symulator IKE** z limitami wpłat i scenariuszami przyszłej wartości
 - **Samouczek** prowadzący po głównych funkcjach aplikacji
 - **Tryb jasny i ciemny**
 - **Kopia zapasowa** portfela do pliku JSON i import na innym urządzeniu
-- **Przypomnienie o kopii zapasowej** po 30 dniach bez eksportu
 - **Prywatność**: portfel zostaje w Twojej przeglądarce i nie jest wysyłany na serwer
 
 ### Dywidendy ETF-ów
@@ -48,9 +57,9 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
   <img src="docs/screenshots/wallet.png" alt="Widok portfela" width="700">
 </p>
 
-### Statystyki i analiza
+### Statystyki i dziennik
 
-Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wpłat i analizę inflacji.
+Statystyki portfela i ręczny Dziennik inwestora są dostępne w osobnych zakładkach.
 
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
@@ -61,6 +70,24 @@ Jedna zakładka łączy zmianę wartości portfela, historię zmian, dziennik wp
 - Uruchomienie aplikacji: Node.js 18 lub nowszy
 - Połączenie z internetem do pobierania notowań i danych o dywidendach
 - Budowa stylów: Node.js 20 lub nowszy oraz pnpm 11.25
+
+## Stack technologiczny
+
+| Technologia | Zastosowanie |
+|---|---|
+| ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white) **Node.js** | Lokalny serwer HTTP, endpointy danych rynkowych i uruchamianie testów bez dodatkowych zależności runtime. |
+| ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black) **Vanilla JavaScript** | Interfejs, obliczenia portfela, analiza wpłat, symulator IKE i bezpieczny zapis w przeglądarce. |
+| ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) **HTML5** | Semantyczna struktura widoków, formularzy, tabel i dostępnych kontrolek. |
+| ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) **Tailwind CSS 4** | Budowanie i minifikacja arkusza stylów z `src/styles.css` do `app.css`. |
+| ![Node test](https://img.shields.io/badge/node%3Atest-339933?logo=nodedotjs&logoColor=white) **node:test** | Testy logiki dywidend, analizy, symulatora i bezpiecznego storage — bez zewnętrznego frameworka. |
+| **Yahoo Finance · Agent Rynku · GUS** | Źródła notowań, informacji o dywidendach oraz miesięcznych danych inflacyjnych. |
+
+### Architektura w skrócie
+
+- `server.js` udostępnia aplikację i API. Dane portfela nie trafiają na serwer.
+- `app.js` obsługuje interfejs i łączy moduły funkcjonalne.
+- `app-core.js`, `analysis.js`, `simulation.js` i `storage.js` wydzielają obliczenia oraz zapis danych.
+- `src/styles.css` jest źródłem stylów; `app.css` to wygenerowany plik produkcyjny.
 
 ## Uruchomienie
 
