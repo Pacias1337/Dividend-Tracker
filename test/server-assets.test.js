@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { findGusCsvUrl, parseGusInflation, server } = require('../server');
+const { findGusCsvUrl, getQuotes, parseGusInflation, server } = require('../server');
 
 test('serwer udostępnia analysis.js jako JavaScript', async () => {
   let status, headers, body;
@@ -32,4 +32,19 @@ test('parser GUS wybiera inflację r/r z tabeli miesięcznej', () => {
 
 test('odnajduje link CSV GUS także wtedy, gdy adres pobierania nie kończy się na .csv', () => {
   assert.equal(findGusCsvUrl('<a href="/file/123/download?token=abc">csv</a>'), '/file/123/download?token=abc');
+});
+
+test('przelicza zagraniczne notowania ETF-ów na PLN', async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async url => ({
+    ok: true,
+    json: async () => ({ chart: { result: [{ meta: url.includes('EURPLN=X') ? { regularMarketPrice: 4.3 } : { regularMarketPrice: 100, currency: 'EUR', regularMarketTime: 1790000000 } }] } }),
+  });
+  try {
+    const { quotes } = await getQuotes();
+    assert.equal(quotes.WORLD.price, 430);
+    assert.equal(quotes.WORLD.currency, 'PLN');
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

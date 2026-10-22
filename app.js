@@ -549,7 +549,18 @@ const companies=[  {
   dividend: 15.23,
   year: 2026,
   quoteSymbol: 'MBR.WA'
-}
+},
+ { ticker: 'WORLD', name: 'iShares Core MSCI World', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'EUNL.DE' },
+ { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', sector: 'ETF · rynki wschodzące', dividend: 0, year: 2026, quoteSymbol: 'IS3N.DE' },
+ { ticker: 'SP500', name: 'iShares Core S&P 500', sector: 'ETF · USA', dividend: 0, year: 2026, quoteSymbol: 'SXR8.DE' },
+ { ticker: 'VHYL', name: 'Vanguard FTSE All-World High Dividend Yield', sector: 'ETF · dywidendowy', dividend: 0, year: 2026, quoteSymbol: 'VGWD.DE' },
+ { ticker: 'NASDAQ', name: 'iShares NASDAQ 100', sector: 'ETF · USA', dividend: 0, year: 2026, quoteSymbol: 'SXRV.DE' },
+ { ticker: 'GOLD', name: 'iShares Physical Gold ETC', sector: 'ETC · złoto', dividend: 0, year: 2026, quoteSymbol: 'PPFB.DE' },
+ { ticker: 'VWCE', name: 'Vanguard FTSE All-World', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'VWCE.DE' },
+ { ticker: 'ACWI', name: 'iShares MSCI ACWI', sector: 'ETF · akcje globalne', dividend: 0, year: 2026, quoteSymbol: 'IUSQ.DE' },
+ { ticker: 'MWIG40TR', name: 'BETA ETF mWIG40TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBM40TR.WA' },
+ { ticker: 'SWIG80TR', name: 'BETA ETF sWIG80TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBS80TR.WA' },
+ { ticker: 'WIG20TR', name: 'BETA ETF WIG20TR', sector: 'ETF · Polska', dividend: 0, year: 2026, quoteSymbol: 'ETFBW20TR.WA' }
 ];
 const defaultPortfolio=['PZU',
 'PEO',

@@ -11,8 +11,26 @@ const tickers =  {
   ING: 'ING.WA',AMC: 'AMC.WA',APT: 'APT.WA',UNI: 'UNI.WA',BHW: 'BHW.WA',WTN: 'WTN.WA',DCR: 'DCR.WA',BBT: 'BBT.WA',ZMT: 'ZMT.WA',VOT: 'VOT.WA',
   TOR: 'TOR.WA',CBF: 'CBF.WA',PAS: 'PAS.WA',TXT: 'TXT.WA',KGH: 'KGH.WA',TPE: 'TPE.WA',ENA: 'ENA.WA',MUR: 'MUR.WA',SON: 'SON.WA',STX: 'STX.WA',
   DBC: 'DBC.WA',FRO: 'FRO.WA',BNP: 'BNP.WA',PGE: 'PGE.WA',JSW: 'JSW.WA',MBK: 'MBK.WA',MIL: 'MIL.WA',ATT: 'ATT.WA',CPS: 'CPS.WA',COG: 'COG.WA',
-  HUG: 'HUG.WA',TEN: 'TEN.WA',GTC: 'GTC.WA',EAT: 'EAT.WA',MRC: 'MRC.WA',LWB: 'LWB.WA',DNP: 'DNP.WA',ZAB: 'ZAB.WA',MBR: 'MBR.WA'
+  HUG: 'HUG.WA',TEN: 'TEN.WA',GTC: 'GTC.WA',EAT: 'EAT.WA',MRC: 'MRC.WA',LWB: 'LWB.WA',DNP: 'DNP.WA',ZAB: 'ZAB.WA',MBR: 'MBR.WA',
+  EIMI: 'IS3N.DE', WORLD: 'EUNL.DE', SP500: 'SXR8.DE', VHYL: 'VGWD.DE', NASDAQ: 'SXRV.DE', GOLD: 'PPFB.DE', VWCE: 'VWCE.DE', ACWI: 'IUSQ.DE', MWIG40TR: 'ETFBM40TR.WA', SWIG80TR: 'ETFBS80TR.WA', WIG20TR: 'ETFBW20TR.WA'
 };
+const fundTickers = new Set(['EIMI','WORLD','SP500','VHYL','NASDAQ','GOLD','VWCE','ACWI','MWIG40TR','SWIG80TR','WIG20TR']);
+const fxCache = new Map();
+const fxPending = new Map();
+async function getFxRate(currency) {
+  if (typeof currency !== 'string') return null;
+  if (currency === 'PLN') return 1;
+  const cached = fxCache.get(currency);
+  if (cached && Date.now() - cached.time < 60000) return cached.rate;
+  if (!fxPending.has(currency)) fxPending.set(currency, (async () => {
+    const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${currency}PLN=X?range=1d&interval=1m`, { headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(10000) });
+    const rate = Number((await response.json()).chart?.result?.[0]?.meta?.regularMarketPrice);
+    if (!response.ok || !Number.isFinite(rate) || rate <= 0) throw new Error('Exchange rate unavailable');
+    fxCache.set(currency, { time: Date.now(), rate });
+    return rate;
+  })().finally(() => fxPending.delete(currency)));
+  return fxPending.get(currency);
+}
 let cache;
 const dividendCache = new Map();
 const dividendCacheTtl = 6 * 60 * 60 * 1000;
@@ -59,8 +77,8 @@ async function getQuotes()  {
         headers:  {
           accept: 'application/json', 'user-agent': 'Mozilla/5.0'
         }, signal: AbortSignal.timeout(10000)
-      }); if (!response.ok) throw new Error('Quote unavailable'); const meta = (await response.json()).chart?.result?.[0]?.meta; const price = Number(meta?.regularMarketPrice); return [ticker,  {
-        price: meta?.currency === 'PLN' && Number.isFinite(price) ? price : null, currency: meta?.currency ?? null, asOf: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null
+      }); if (!response.ok) throw new Error('Quote unavailable'); const meta = (await response.json()).chart?.result?.[0]?.meta; const price = Number(meta?.regularMarketPrice); const currency = meta?.currency; const rate = currency ? await getFxRate(currency) : null; return [ticker,  {
+        price: Number.isFinite(price) && rate ? price * rate : null, currency: Number.isFinite(price) && rate ? 'PLN' : currency ?? null, asOf: meta?.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null
       }];
     }
     catch  {
@@ -153,14 +171,15 @@ async function getLastPaidDividend(ticker)  {
   });
   if (!response.ok) throw new Error('Dividend history unavailable');
   const chart = (await response.json()).chart?.result?.[0];
-  if (chart?.meta?.currency !== 'PLN') return null;
+  const rate = await getFxRate(chart?.meta?.currency);
+  if (!rate) return null;
   const payments = Object.values(chart.events?.dividends ??  {
   }).filter((event) => Number.isFinite(event.amount) && event.amount >= 0 && Number.isFinite(event.date) && event.date <= Date.now() / 1000, );
   if (!payments.length) return null;
   const latestYear = Math.max(...payments.map((event) => new Date(event.date * 1000).getFullYear()));
   const latestPayments = payments.filter((event) => new Date(event.date * 1000).getFullYear() === latestYear);
   return  {
-    amount: latestPayments.reduce((sum, event) => sum + event.amount, 0),
+    amount: latestPayments.reduce((sum, event) => sum + event.amount, 0) * rate,
     year: latestYear,
     status: 'last-paid',
     asOf: new Date(Math.max(...latestPayments.map((event) => event.date)) * 1000).toISOString(),
@@ -170,7 +189,7 @@ async function getLastPaidDividend(ticker)  {
 async function fetchDividend(ticker)  {
   let publicData = null;
   try  {
-    publicData = await callPublicDividends(ticker);
+    if (!fundTickers.has(ticker)) publicData = await callPublicDividends(ticker);
   }
   catch  {
     // Use Yahoo's recorded dividend events when the resolutions feed is unavailable.
@@ -289,6 +308,7 @@ module.exports =  {
   callPublicDividends,
   dividendCache,
   fetchDividend,
+  getQuotes,
   getDividends,
   getLastPaidDividend,
   findGusCsvUrl,
