@@ -1255,8 +1255,6 @@ document.querySelector('#rows').addEventListener('click', (event) =>  {
 document.querySelector('#rows').addEventListener('keydown',event=>{const row=event.target.closest('tr[data-ticker]');if(row&&(event.key==='Enter'||event.key===' ')&&!event.target.closest('button')){event.preventDefault();openPositionDetails(row.dataset.ticker)}});
 document.querySelector('#closePositionDialog').addEventListener('click',()=>positionDialog.close());
 positionDialog.addEventListener('click',event=>{if(event.target===positionDialog)positionDialog.close()});
-window.addEventListener('scroll',updateJournalNav,{passive:true});
-window.addEventListener('resize',updateJournalNav,{passive:true});
 function setView(view) {
   if(view==='analysis')view='stats';
   const views=['portfolio','stats','journal','simulation'];
@@ -1265,29 +1263,10 @@ function setView(view) {
     const tab=document.querySelector(`#${name}Tab`);
     if(tab){tab.setAttribute('aria-selected',String(name===view));tab.tabIndex=name===view?0:-1}
   });
-  if(view==='stats'){renderStats();updateStatsNav()}
-  if(view==='journal'){renderAnalysis();updateJournalNav()}
+  if(view==='stats'){renderStats()}
+  if(view==='journal'){renderAnalysis()}
   updateNavigationDock()
 }
-const statsNav=document.querySelector('#statsNav'),statsPanels=[
-  ['statsOverview',document.querySelector('#statsView > .stats-cards')],
-  ['statsValueHistory',document.querySelector('#statsView > .panel')],
-  ['statsActivity',document.querySelector('#activityTitle').closest('.panel')]
-].filter(([,element])=>element);
-statsPanels.forEach(([id,element])=>{element.id=id;element.style.scrollMarginTop='164px'});
-function updateStatsNav() {
-  if(document.querySelector('#statsView').classList.contains('hidden')){updateNavigationDock();return}
-  let active=statsPanels[0]?.[0];
-  const threshold=Math.min(280,Math.max(190,innerHeight*.3));
-  for(const [id,element] of statsPanels){if(element.getBoundingClientRect().top<=threshold)active=id;else break}
-  if(scrollY+innerHeight>=document.documentElement.scrollHeight-24)active=statsPanels.at(-1)?.[0]??active;
-  statsNav.querySelectorAll('a').forEach(link=>{if(link.hash===`#${active}`)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')});
-  updateNavigationDock()
-}
-const journalNav=document.querySelector('#journalNav');
-const journalPanels=[...document.querySelectorAll('#analysisView .analysis-panel')].map((panel,index)=>[['journalDeposits','journalQuarters','journalInvestments','journalReturns'][index],panel]);
-journalPanels.forEach(([id,element])=>{element.id=id;element.style.scrollMarginTop='164px'});
-function updateJournalNav(){if(document.querySelector('#journalView').classList.contains('hidden'))return;let active=journalPanels[0]?.[0];for(const [id,element] of journalPanels){if(element.getBoundingClientRect().top<=250)active=id;else break}journalNav.querySelectorAll('a').forEach(link=>{if(link.hash===`#${active}`)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current')})}
 const themeToggle=document.querySelector('#themeToggle');
 const savedTheme=safeStorage.get('dividend-ike-theme');
 let darkMode=savedTheme==='dark'||savedTheme===null&&matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1316,10 +1295,9 @@ document.querySelector('.period-tabs').addEventListener('keydown',event=>{
 });
 const viewNavigation=document.querySelector('.view-navigation'),viewTabs=document.querySelector('.view-tabs');
 const navigationDock=document.createElement('div');navigationDock.className='navigation-dock';navigationDock.setAttribute('aria-label','Nawigacja');
-const viewTabsClone=viewTabs.cloneNode(true),statsNavClone=statsNav.cloneNode(true),journalNavClone=journalNav.cloneNode(true);
-viewTabsClone.removeAttribute('id');statsNavClone.removeAttribute('id');journalNavClone.removeAttribute('id');
-for(const clone of [viewTabsClone,statsNavClone,journalNavClone])clone.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));
-navigationDock.append(viewTabsClone,statsNavClone,journalNavClone);document.body.append(navigationDock);
+const viewTabsClone=viewTabs.cloneNode(true);
+viewTabsClone.removeAttribute('id');viewTabsClone.querySelectorAll('[id]').forEach(element=>element.removeAttribute('id'));
+navigationDock.append(viewTabsClone);document.body.append(navigationDock);
 function syncNavigationClone(source,clone) {
   const width=source.getBoundingClientRect().width;if(width)clone.style.width=`${width}px`;
   const originals=source.querySelectorAll('button,a'),copies=clone.querySelectorAll('button,a');
@@ -1331,15 +1309,12 @@ function isInViewport(element) {
   return rect.bottom>headerBottom&&rect.top<innerHeight
 }
 function updateNavigationDock() {
-  syncNavigationClone(viewTabs,viewTabsClone);syncNavigationClone(statsNav,statsNavClone);syncNavigationClone(journalNav,journalNavClone);
-  const showViews=!isInViewport(viewNavigation),showStats=!document.querySelector('#statsView').classList.contains('hidden')&&!isInViewport(statsNav);
-  const showJournal=!document.querySelector('#journalView').classList.contains('hidden')&&!isInViewport(journalNav);
-  navigationDock.classList.toggle('show-stats',showStats);navigationDock.classList.toggle('show-journal',showJournal);navigationDock.classList.toggle('is-visible',showViews||showStats||showJournal)
+  syncNavigationClone(viewTabs,viewTabsClone);
+  const showViews=!isInViewport(viewNavigation);
+  navigationDock.classList.toggle('is-visible',showViews)
 }
 viewTabsClone.addEventListener('click',event=>{const button=event.target.closest('.view-tab');if(!button)return;event.preventDefault();const index=[...viewTabsClone.querySelectorAll('.view-tab')].indexOf(button);viewTabs.querySelectorAll('.view-tab')[index]?.click()});
 viewTabsClone.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=[...viewTabsClone.querySelectorAll('.view-tab')],index=tabs.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next].focus();tabs[next].click()});
-statsNavClone.addEventListener('click',event=>{const link=event.target.closest('a[href^="#"]');if(!link)return;const original=[...statsNav.querySelectorAll('a')].find(item=>item.hash===link.hash);if(original){event.preventDefault();original.click()}});
-journalNavClone.addEventListener('click',event=>{const link=event.target.closest('a[href^="#"]');if(!link)return;const original=[...journalNav.querySelectorAll('a')].find(item=>item.hash===link.hash);if(original){event.preventDefault();original.click()}});
 const backToTop=document.createElement('button');
 backToTop.id='backToTop';backToTop.type='button';backToTop.setAttribute('aria-label','Wróć na górę strony');backToTop.title='Wróć na górę';
 backToTop.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
@@ -1351,7 +1326,7 @@ function updateScrollNavigation() {
   document.body.classList.toggle('nav-floating',window.scrollY>120);
   const showBackToTop=window.scrollY>360;
   backToTop.classList.toggle('is-visible',showBackToTop);backToTop.tabIndex=showBackToTop?0:-1;backToTop.setAttribute('aria-hidden',String(!showBackToTop));
-  updateStatsNav();updateNavigationDock();
+  updateNavigationDock();
 }
 window.addEventListener('scroll',updateScrollNavigation,{passive:true});
 window.addEventListener('resize',updateScrollNavigation,{passive:true});
@@ -1362,12 +1337,27 @@ document.addEventListener('keydown',event=>{
   if(event.key==='F1'&&!event.target.closest('input,textarea,select,[contenteditable="true"]')){event.preventDefault();window.AppTutorial?.start({setView})}
 });
 const depositDialog=document.querySelector('#depositDialog'),depositForm=document.querySelector('#depositForm');
+const depositDateInput=document.querySelector('#depositDate'),depositCalendar=document.querySelector('#depositCalendar');
+let calendarMonth=new Date();
+function renderDepositCalendar(){const year=calendarMonth.getFullYear(),month=calendarMonth.getMonth(),first=new Date(year,month,1),offset=(first.getDay()+6)%7,days=new Date(year,month+1,0).getDate(),selected=depositDateInput.value,today=new Date().toISOString().slice(0,10);let html=`<header><button type="button" data-calendar-step="-1" aria-label="Poprzedni miesiąc">‹</button><strong>${new Intl.DateTimeFormat('pl-PL',{month:'long',year:'numeric'}).format(first)}</strong><button type="button" data-calendar-step="1" aria-label="Następny miesiąc">›</button></header><div class="calendar-grid">${['Pn','Wt','Śr','Cz','Pt','So','Nd'].map(day=>`<span>${day}</span>`).join('')}`;for(let i=0;i<offset;i++)html+='<i></i>';for(let day=1;day<=days;day++){const date=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;html+=`<button type="button" data-calendar-date="${date}" ${date>today?'disabled':''} class="${date===selected?'selected':''} ${date===today?'today':''}">${day}</button>`}depositCalendar.innerHTML=html+'</div>'}
+document.querySelector('.date-picker-toggle').addEventListener('click',()=>{calendarMonth=depositDateInput.value?new Date(`${depositDateInput.value}T12:00:00`):new Date();renderDepositCalendar();depositCalendar.classList.toggle('hidden')});
+depositCalendar.addEventListener('click',event=>{const step=event.target.closest('[data-calendar-step]'),day=event.target.closest('[data-calendar-date]');if(step){calendarMonth.setMonth(calendarMonth.getMonth()+Number(step.dataset.calendarStep));renderDepositCalendar()}else if(day){depositDateInput.value=day.dataset.calendarDate;depositDateInput.dispatchEvent(new Event('change',{bubbles:true}));depositCalendar.classList.add('hidden')}});
+depositDateInput.addEventListener('change',()=>{if(!depositCalendar.classList.contains('hidden'))renderDepositCalendar()});
+document.querySelectorAll('form').forEach(form=>form.querySelectorAll('[required]').forEach(input=>{
+  if(input.type==='hidden')return;
+  const label=input.labels?.[0]||input.closest('label');
+  if(!label||label.querySelector('.required-mark'))return;
+  const mark=document.createElement('span');mark.className='required-mark';mark.textContent=' *';mark.setAttribute('aria-hidden','true');
+  const title=document.createElement('span');title.className='required-label-title';
+  const textNode=[...label.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.textContent.trim());
+  if(textNode){label.insertBefore(title,textNode);title.append(textNode);title.append(mark)}else{title.append(mark);label.prepend(title)}
+}));
 let editingDepositIndex=null;
 function openDepositForm(index=null) {
   editingDepositIndex=index;
   const currentValue=portfolio.reduce((sum,item)=>sum+(Number.isFinite(prices[item.ticker])&&prices[item.ticker]>0?item.shares*prices[item.ticker]:0),0);
   document.querySelector('#depositFormTitle').textContent=index===null?'Dodaj wpis':'Edytuj wpis';
-  const dateInput=document.querySelector('#depositDate'),today=new Date().toISOString().slice(0,10);dateInput.max=today;
+  const dateInput=depositDateInput,today=new Date().toISOString().slice(0,10);dateInput.max=today;depositCalendar.classList.add('hidden');
   document.querySelector('#depositDate').value=index===null?today:analysisEntries[index].date;
   document.querySelector('#depositBalance').value=roundMoney(index===null?currentValue:analysisEntries[index].balance).toFixed(2);
   document.querySelector('#depositAmount').value=index===null?'':roundMoney(analysisEntries[index].deposit).toFixed(2);

@@ -2611,6 +2611,34 @@ html {scroll-behavior:smooth}
 @keyframes designer-enter {from{opacity:0;transform:translateY(14px) scale(.994);filter:blur(4px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.panel,.stat,.stats-card,.view-tabs .view-tab,.period-tab,.add,.refresh,.backup-button{transition:none}.view-panel-enter{animation:none}.stat.primary::after{display:none}}
 .row-actions {display:flex;justify-content:flex-end;align-items:center;gap:clamp(12px,2.4vw,30px);min-width:132px;padding-right:clamp(8px,2vw,24px)}
+.required-mark {color:#b66d70;font-weight:750}
+.required-label-title {display:inline;white-space:nowrap}
+.date-picker {position:relative;display:flex;align-items:center}
+.date-picker input {width:100%;padding-right:48px}
+.date-picker-toggle {position:absolute;right:6px;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:9px;background:var(--surface-2);color:var(--text-2);cursor:pointer}
+.date-picker input::-webkit-calendar-picker-indicator {opacity:0;position:absolute;right:42px;width:36px;height:36px;cursor:default;pointer-events:none}
+.date-picker-toggle {font-size:0}
+.date-picker-toggle::before {width:19px;height:19px;background:currentColor;content:"";mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='16' rx='3'/%3E%3Cpath d='M7.5 3v4M16.5 3v4M4 9.5h16M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01'/%3E%3C/svg%3E") center/contain no-repeat}
+.date-picker-toggle {position:absolute;top:50%;right:6px;transform:translateY(-50%);padding:0;line-height:0}
+.date-picker-toggle::before {position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+.tour-toggle .tour-label {display:none!important}
+.tour-toggle {width:40px;min-width:40px;padding:0;justify-content:center}
+.topright .tour-toggle {width:32px;min-width:32px;height:36px;min-height:36px;padding:0;border:0;border-radius:8px;background:transparent;box-shadow:none}
+.topright .tour-toggle:hover {transform:translateY(-1px);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.topright .tour-toggle .tour-mark {width:auto;height:auto;border-radius:0;background:transparent;color:var(--text-2);font-size:20px;line-height:1}
+.dark-mode .topright .tour-toggle .tour-mark {background:transparent;color:var(--text)}
+.topright .settings-toggle {width:32px;min-width:32px;height:36px;min-height:36px;padding:0;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--text-2)}
+.topright .settings-toggle:hover {transform:translateY(-1px);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.topright .settings-toggle:focus-visible,.topright .tour-toggle:focus-visible {outline:2px solid var(--accent);outline-offset:2px}
+.dark-mode .topright .settings-toggle {background:transparent;color:var(--text)}
+html {scrollbar-width:none}
+html::-webkit-scrollbar {display:none}
+.calendar-popover {position:absolute;z-index:30;top:calc(100% + 8px);left:0;width:min(300px,calc(100vw - 48px));padding:12px;border:1px solid var(--hairline);border-radius:16px;background:var(--surface);box-shadow:0 18px 48px #0004;animation:picker-unfold .22s ease both}
+.calendar-popover header {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calendar-popover header button,.calendar-grid button {display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:10px;background:transparent;color:var(--text);cursor:pointer}
+.calendar-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
+.calendar-grid span {padding:8px 0;color:var(--text-3);font-size:11px}
+.calendar-grid button:hover,.calendar-grid button.selected {background:var(--accent);color:white}.calendar-grid button.today {outline:1px solid var(--accent)}.calendar-grid button:disabled{opacity:.3;cursor:not-allowed}
 .row-actions .edit,.row-actions .delete {width:40px;height:40px;flex:0 0 40px}
 .row-actions .action-icon {width:18px;height:18px}
 .analysis-tablewrap {scrollbar-width:thin;overscroll-behavior-inline:contain}
