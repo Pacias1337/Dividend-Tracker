@@ -306,6 +306,18 @@ button:focus-visible,input:focus-visible,select:focus-visible  {
   transform:translateY(-2px);
   box-shadow:0 8px 18px #13754d28
 }
+.portfolio-head .add {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  line-height:1
+}
+.portfolio-head .add>span:first-child {
+  display:grid;
+  place-items:center;
+  line-height:1
+}
 .backup-actions  {
   display:flex;
   align-items:center;
