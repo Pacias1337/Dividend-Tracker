@@ -1005,7 +1005,7 @@ function renderSectorChart() {
     }
     values.set(company.sector,(values.get(company.sector)||0)+holding.shares*price)
   }
-  const entries=[...values].sort(([a],[b])=>a.localeCompare(b,'pl')),
+  const entries=[...values].sort((a,b)=>b[1]-a[1]),
   total=entries.reduce((sum,[,value])=>sum+value,0),
   svg=document.querySelector('#sectorChart'),
   legend=document.querySelector('#sectorLegend'),
@@ -1021,8 +1021,27 @@ function renderSectorChart() {
   svg.classList.remove('hidden');
   const radius=100,
   circumference=2*Math.PI*radius,
-  palette=['--chart-1','--chart-2','--chart-3','--chart-4','--chart-5','--chart-6','--chart-7','--chart-8','--chart-9','--chart-10'],
-  colors=entries.map((_,i)=>palette[i%palette.length]);
+  palette=Array.from({length:17},(_,i)=>`--chart-${i+1}`),
+  sectorColors=new Map([
+    ['Banki','--chart-1'],
+    ['Ubezpieczenia','--chart-2'],
+    ['Technologie','--chart-3'],
+    ['Przemysł','--chart-4'],
+    ['Finanse','--chart-5'],
+    ['Energetyka','--chart-6'],
+    ['Nieruchomości','--chart-7'],
+    ['Budownictwo','--chart-8'],
+    ['Dobra konsumenckie','--chart-9'],
+    ['Ochrona zdrowia','--chart-10'],
+    ['Surowce','--chart-11'],
+    ['Handel','--chart-12'],
+    ['Media','--chart-13'],
+    ['Telekomunikacja','--chart-14'],
+    ['Infrastruktura','--chart-15'],
+    ['Turystyka','--chart-16'],
+    ['Chemia','--chart-17']
+  ]),
+  colors=entries.map(([sector],i)=>sectorColors.get(sector)||palette[i%palette.length]);
   let offset=0;
   const slices=entries.map(([sector,value],i)=> {
     const fraction=value/total,share=fraction*100,length=fraction*circumference,start=offset/circumference*360-90;offset+=length;return`<circle class="sector-slice" cx="160" cy="160" r="${radius}" fill="none" stroke="var(${colors[i]})" stroke-width="76" stroke-dasharray="${length} ${circumference-length}" transform="rotate(${start} 160 160)" data-sector="${escapeHtml(sector)}" data-share="${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%" data-value="${value}" data-color="${colors[i]}" tabindex="0" role="img" aria-label="${escapeHtml(sector)}: ${share.toLocaleString('pl-PL',{maximumFractionDigits:1})}%, ${money(value)}"></circle>`
