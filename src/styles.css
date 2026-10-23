@@ -2294,10 +2294,10 @@ tbody tr:hover  {
   --muted:var(--text-3);
   --line:var(--hairline);
   --white:var(--surface);
-  --chart-1:#17663f;--chart-2:#426c91;--chart-3:#a65343;--chart-4:#8a5d91;--chart-5:#9b6a19;
-  --chart-6:#327d80;--chart-7:#596daf;--chart-8:#a24e73;--chart-9:#657d35;--chart-10:#8b654b;
-  --chart-11:#b04f9a;--chart-12:#4f7d32;--chart-13:#c15e24;--chart-14:#4775b5;
-  --chart-15:#a43f52;--chart-16:#348b68;--chart-17:#7656ad;
+  --chart-1:#78ce99;--chart-2:#8bb9df;--chart-3:#ef9b89;--chart-4:#d2a1df;--chart-5:#e6bc70;
+  --chart-6:#79c8ca;--chart-7:#9cafff;--chart-8:#e49ab7;--chart-9:#b2cb76;--chart-10:#d1a487;
+  --chart-11:#e58bcf;--chart-12:#9bcf75;--chart-13:#f29a63;--chart-14:#82aef0;
+  --chart-15:#ee8293;--chart-16:#70c99c;--chart-17:#b39af0;
 }
 .dark-mode {
   color-scheme:dark;
