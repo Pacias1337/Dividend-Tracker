@@ -55,7 +55,7 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 
 <p align="center">
   <img src="docs/screenshots/wallet.png" alt="Widok portfela" width="700">
-</p>
+outdated</p>
 
 ### Statystyki i dziennik
 
@@ -63,7 +63,7 @@ Statystyki portfela i ręczny Dziennik inwestora są dostępne w osobnych zakła
 
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
-</p>
+outdated</p>
 
 ## Wymagania
 
