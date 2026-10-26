@@ -55,7 +55,7 @@ Podsumowanie, alokacja sektorów i lista spółek w jednym widoku.
 
 <p align="center">
   <img src="docs/screenshots/wallet.png" alt="Widok portfela" width="700">
-outdated</p>
+</p>
 
 ### Statystyki i dziennik
 
