@@ -63,7 +63,11 @@ Statystyki portfela i ręczny Dziennik inwestora są dostępne w osobnych zakła
 
 <p align="center">
   <img src="docs/screenshots/stats.png" alt="Widok statystyk" width="700">
-outdated</p>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dziennik.png" alt="Widok statystyk" width="700">
+</p>
 
 ## Wymagania
 
