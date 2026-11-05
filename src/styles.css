@@ -705,23 +705,51 @@ table:has(#rows) tbody td:last-child {min-width:100px;white-space:nowrap}
 }
 .history-grid  {
   stroke:#e8eee9;
-  stroke-width:1
+  stroke-width:1;
+  stroke-dasharray:3 5
+}
+.history-area {
+  fill:url(#historyArea)
+}
+.history-current-guide {
+  stroke:var(--green);
+  stroke-width:1;
+  stroke-dasharray:3 5;
+  opacity:.5
 }
 .history-line  {
   fill:none;
-  stroke:#168256;
-  stroke-width:3;
+  stroke:var(--green);
+  stroke-width:3.5;
   stroke-linecap:round;
-  stroke-linejoin:round
+  stroke-linejoin:round;
+  filter:drop-shadow(0 2px 3px #13754d30)
 }
 .history-point  {
-  fill:#168256;
-  stroke:white;
+  fill:var(--green);
+  stroke:var(--white);
+  stroke-width:2.5
+}
+.history-point:not(.is-current) {
+  opacity:.48
+}
+.history-point.is-current {
   stroke-width:3
+}
+.history-current-halo {
+  fill:var(--green);
+  fill-opacity:.14;
+  pointer-events:none
 }
 .history-label  {
   fill:#748178;
   font-size:12px
+}
+.history-current-label {
+  fill:var(--green);
+  font-size:13px;
+  font-weight:750;
+  font-variant-numeric:tabular-nums
 }
 .period-stats  {
   display:grid;
@@ -1360,6 +1388,7 @@ body.dark-mode  {
 .dark-mode .history-grid  {
   stroke:#34463a
 }
+.dark-mode .history-line {filter:drop-shadow(0 2px 4px #0006)}
 .dark-mode .history-label  {
   fill:#a4b0a8
 }
