@@ -607,8 +607,8 @@ editTicker=null,
 formOpener=null,
 sortDirection='asc',
 portfolioSort= {
-  column: null,
-  direction: 'asc'
+  column: 'value',
+  direction: 'desc'
 };
 let portfolioHistory=JSON.parse(safeStorage.get('dividend-ike-history')||'[]');
 if(!Array.isArray(portfolioHistory))portfolioHistory=[];
@@ -973,16 +973,19 @@ function renderHistoryChart(points) {
   high=max+pad,
   x=i=>points.length===1?(left+right)/2: left+(right-left)*i/(points.length-1),
   y=value=>bottom-(value-low)/(high-low)*(bottom-top),
-  coords=points.map((item,i)=>`${x(i)},${y(item.value)}`).join(' '),
+  chartPoints=points.map((item,i)=>({x:x(i),y:y(item.value)})),
+  linePath=chartPoints.length<3?chartPoints.map((point,i)=>`${i?'L':'M'} ${point.x} ${point.y}`).join(' '):chartPoints.slice(1,-1).reduce((path,point,i)=>{const next=chartPoints[i+2];return`${path} Q ${point.x} ${point.y} ${(point.x+next.x)/2} ${(point.y+next.y)/2}`},`M ${chartPoints[0].x} ${chartPoints[0].y}`)+` Q ${chartPoints.at(-2).x} ${chartPoints.at(-2).y} ${chartPoints.at(-1).x} ${chartPoints.at(-1).y}`,
+  areaPath=`${linePath} L ${chartPoints.at(-1).x} ${bottom} L ${chartPoints[0].x} ${bottom} Z`,
   grid=[0,
   1,
   2].map(i=> {
     const value=high-(high-low)*i/2,pos=top+(bottom-top)*i/2;return`<line class="history-grid" x1="${left}" y1="${pos}" x2="${right}" y2="${pos}"/><text class="history-label" x="0" y="${pos+4}">${money(value)}</text>`
   }).join(''),
-  dots=points.map((item,i)=>`<circle class="history-point" cx="${x(i)}" cy="${y(item.value)}" r="5"><title>${escapeHtml(new Date(item.at).toLocaleString('pl-PL'))}: ${money(item.value)}</title></circle>`).join(''),
+  dots=points.map((item,i)=>`<circle class="history-point${i===points.length-1?' is-current':''}" cx="${x(i)}" cy="${y(item.value)}" r="${i===points.length-1?6:3}"><title>${escapeHtml(new Date(item.at).toLocaleString('pl-PL'))}: ${money(item.value)}</title></circle>`).join(''),
   start=escapeHtml(new Date(points[0].at).toLocaleDateString('pl-PL')),
-  end=escapeHtml(new Date(points.at(-1).at).toLocaleDateString('pl-PL'));
-  svg.innerHTML=`${grid}<polyline class="history-line" points="${coords}"/>${dots}<text class="history-label" x="${left}" y="207">${start}</text><text class="history-label" text-anchor="end" x="${right}" y="207">${end}</text>`;
+  end=escapeHtml(new Date(points.at(-1).at).toLocaleDateString('pl-PL')),
+  current=chartPoints.at(-1);
+  svg.innerHTML=`<defs><linearGradient id="historyArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--green)" stop-opacity=".24"/><stop offset="100%" stop-color="var(--green)" stop-opacity=".015"/></linearGradient></defs>${grid}<path class="history-area" d="${areaPath}"/><line class="history-current-guide" x1="${current.x}" y1="${top}" x2="${current.x}" y2="${bottom}"/><path class="history-line" d="${linePath}"/>${dots}<circle class="history-current-halo" cx="${current.x}" cy="${current.y}" r="10"/><text class="history-current-label" text-anchor="end" x="${right}" y="15">${money(points.at(-1).value)}</text><text class="history-label" x="${left}" y="207">${start}</text><text class="history-label" text-anchor="end" x="${right}" y="207">${end}</text>`;
   document.querySelector('#statsChangeNote').textContent=firstSnapshotNote(points)
 }
 function firstSnapshotNote(points) {
